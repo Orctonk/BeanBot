@@ -5,10 +5,8 @@ mod module;
 
 use serenity::{
     async_trait,
-    builder::{CreateEmbed, CreateMessage},
-    model::{channel::Message, gateway::Ready, id::ChannelId, gateway::Activity},
+    model::{channel::Message, gateway::Ready, gateway::Activity},
     prelude::*,
-    utils::Colour,
 };
 
 struct CommandHandler{
