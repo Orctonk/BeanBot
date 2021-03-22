@@ -1,4 +1,5 @@
 use std::env;
+use std::panic;
 
 use serenity::{
     async_trait,
@@ -21,9 +22,11 @@ impl EventHandler for CommandHandler{
 
 #[tokio::main]
 async fn main(){
-    let token_result = std::fs::read_to_string(std::path::Path::new("../token"));
-    assert_eq!(token_result.is_ok(), true);
-    let token = token_result.ok().expect("Could not read token from file");
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        panic!("Please provide a file containing the bot token");
+    } 
+    let token = std::fs::read_to_string(std::path::Path::new(&args[1])).expect("Failed to open token file");
 
     let mut client = Client::builder(&token)
         .event_handler(CommandHandler)
