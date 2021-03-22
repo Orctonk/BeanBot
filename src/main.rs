@@ -1,21 +1,29 @@
 use std::env;
 use std::panic;
+mod dispatcher;
 
 use serenity::{
     async_trait,
-    model::{channel::Message, gateway::Ready},
+    builder::{CreateEmbed, CreateMessage},
+    model::{channel::Message, gateway::Ready, id::ChannelId, gateway::Activity},
     prelude::*,
+    utils::Colour,
 };
 
-struct CommandHandler;
+struct CommandHandler{
+    dispatcher: dispatcher::Dispatcher,
+}
 
 #[async_trait]
 impl EventHandler for CommandHandler{
     async fn message(&self, ctx: Context, new_message: Message){
-        
+        if new_message.mentions_me(&ctx.http).await.unwrap_or(false) || new_message.content.starts_with("<beans>"){
+            self.dispatcher.dispatch(ctx, &new_message, &new_message.content).await;
+        }
     }
 
-    async fn ready(&self, _: Context, data_about_bot: Ready){
+    async fn ready(&self, ctx: Context, _data_about_bot: Ready){
+        ctx.set_activity(Activity::competing("Bean eating")).await;
         println!("Hello! I am ready to dispatch beans!");
     }
 }
@@ -28,8 +36,9 @@ async fn main(){
     } 
     let token = std::fs::read_to_string(std::path::Path::new(&args[1])).expect("Failed to open token file");
 
+    let cmd_handler = CommandHandler {dispatcher: dispatcher::Dispatcher};
     let mut client = Client::builder(&token)
-        .event_handler(CommandHandler)
+        .event_handler(cmd_handler)
         .await.expect("Error creating client");
 
     if let Err(why) = client.start().await{
