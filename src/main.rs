@@ -1,6 +1,7 @@
 use std::env;
 use std::panic;
 mod dispatcher;
+mod module;
 
 use serenity::{
     async_trait,
