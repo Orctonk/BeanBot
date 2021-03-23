@@ -1,31 +1,42 @@
-use std::env;
-use std::panic;
-mod dispatcher;
-mod module;
+use std::{
+    collections::HashSet,
+    env,
+    panic,
+};
+
+mod modules;
+use modules::saybeans::*;
 
 use serenity::{
     async_trait,
-    model::{channel::Message, gateway::Ready, gateway::Activity},
+    client::bridge::gateway::ShardManager,
+    framework::{
+        StandardFramework,
+        standard::macros::group,
+        standard::Configuration,
+    },
+    http::Http,
+    model::{event::ResumedEvent, channel::Message, gateway::Ready, gateway::Activity, id::UserId},
     prelude::*,
 };
 
-struct CommandHandler{
-    dispatcher: dispatcher::Dispatcher,
-}
+struct CommandHandler;
 
 #[async_trait]
 impl EventHandler for CommandHandler{
-    async fn message(&self, ctx: Context, new_message: Message){
-        if new_message.mentions_me(&ctx.http).await.unwrap_or(false) || new_message.content.starts_with("<beans>"){
-            self.dispatcher.dispatch(ctx, &new_message, &new_message.content).await;
-        }
-    }
-
     async fn ready(&self, ctx: Context, _data_about_bot: Ready){
         ctx.set_activity(Activity::competing("Bean eating")).await;
         println!("Hello! I am ready to dispatch beans!");
     }
+
+    async fn resume(&self, _: Context, _: ResumedEvent) {
+        println!("Resumed");
+    }
 }
+
+#[group]
+#[commands(saybeans)]
+struct SayBeans;
 
 #[tokio::main]
 async fn main(){
@@ -35,9 +46,19 @@ async fn main(){
     } 
     let token = std::fs::read_to_string(std::path::Path::new(&args[1])).expect("Failed to open token file");
 
-    let cmd_handler = CommandHandler {dispatcher: dispatcher::Dispatcher};
+    let owners = vec![UserId(106865750614011904)].into_iter().collect();
+
+    let framework = StandardFramework::new()
+    .configure(|c: &mut Configuration| c
+               .owners(owners)
+               .prefix("!")
+               .case_insensitivity(true)
+                .on_mention(Some(UserId(354361968091594752))))
+               .group(&SAYBEANS_GROUP);
+
     let mut client = Client::builder(&token)
-        .event_handler(cmd_handler)
+        .framework(framework)
+        .event_handler(CommandHandler)
         .await.expect("Error creating client");
 
     if let Err(why) = client.start().await{
