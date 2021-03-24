@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 0.1.2 *Sprout*
+* Updated documentation for currency module
+* Added some error messaging on failed dispatches
+* Added simple help command
+
 ## Version 0.1.1 *Sprout*
 * Removed redundant imports.
 * Fixed indexing bug in currency module which caused crashes when issuing give command without a mention.
