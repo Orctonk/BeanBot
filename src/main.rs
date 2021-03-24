@@ -34,10 +34,6 @@ impl EventHandler for CommandHandler{
     }
 }
 
-#[group]
-#[commands(saybeans)]
-struct SayBeans;
-
 #[tokio::main]
 async fn main(){
     let args: Vec<String> = env::args().collect();
