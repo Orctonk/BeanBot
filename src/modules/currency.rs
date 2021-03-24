@@ -18,7 +18,7 @@ struct Currency;
 pub async fn gimme(ctx: &Context, msg: &Message) -> CommandResult {
     let userid = msg.author.id.0;
     add_beans(userid, 5);
-    msg.channel_id.say(&ctx.http, "Here, have 5 beans!").await?;
+    msg.channel_id.say(&ctx.http, "Here, have `5` beans!").await?;
     Ok(())
 }
 
@@ -27,7 +27,7 @@ pub async fn showme(ctx: &Context, msg: &Message) -> CommandResult {
     let userid = msg.author.id.0;
     let _ = match get_bean_balance(userid) {
         Err(why) => msg.channel_id.say(&ctx.http, "Failed to get beans: ".to_owned() + &why).await?,
-        Ok(bal) => msg.channel_id.say(&ctx.http, "You have ".to_owned() + &bal.to_string() +" beans").await?
+        Ok(bal) => msg.channel_id.say(&ctx.http, "You have `".to_owned() + &bal.to_string() +"` beans").await?
     };
     Ok(())
 }
@@ -43,7 +43,7 @@ pub async fn give(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
         Ok(am) => {
             match transfer_beans(userid, recipient.id.0, am) {
                 Err(why) => msg.channel_id.say(&ctx.http, "Failed to give beans: ".to_owned() + &why).await?,
-                Ok(_) => msg.channel_id.say(&ctx.http, "Gave ".to_owned() + &recipient.name + " " + &am.to_string() +" beans").await?
+                Ok(_) => msg.channel_id.say(&ctx.http, "Gave ".to_owned() + &recipient.name + " `" + &am.to_string() +"` beans").await?
             }
         }
     };
