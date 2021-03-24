@@ -20,7 +20,13 @@ use serenity::{
         standard::macros::hook,
     },
     http::Http,
-    model::{event::ResumedEvent, channel::Message, gateway::Ready, gateway::Activity},
+    model::{
+        event::ResumedEvent, 
+        channel::Message, 
+        gateway::Ready, 
+        gateway::Activity,
+        application::TeamMember,
+    },
     prelude::*,
 };
 
@@ -74,7 +80,7 @@ async fn main(){
         Ok(info) => {
             let mut owners = HashSet::new();
             if let Some(team) = info.team {
-                owners.insert(team.owner_user_id);
+                owners.extend(team.members.iter().map(|m : &TeamMember| m.user.id));
             } else {
                 owners.insert(info.owner.id);
             }
