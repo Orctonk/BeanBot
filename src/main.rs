@@ -5,7 +5,7 @@ use std::{
 };
 
 mod modules;
-use modules::beans::*;
+use modules::showmebeans::*;
 
 use serenity::{
     async_trait,
@@ -66,7 +66,7 @@ async fn main(){
         .prefix("!")
         .case_insensitivity(true)
         .on_mention(Some(bot_id)))
-        .group(&BEANS_GROUP);
+        .group(&SHOWMEBEANS_GROUP);
 
     let mut client = Client::builder(&token)
         .framework(framework)

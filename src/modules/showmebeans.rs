@@ -11,11 +11,11 @@ use serenity::http::routing::RouteInfo::CreateMessage;
 use serenity::model::guild::ActionRole::Create;
 
 #[group]
-#[commands(beans)]
-struct Beans;
+#[commands(showmebeans)]
+struct ShowMeBeans;
 
 #[command]
-pub async fn beans(ctx: &Context, msg: &Message) -> CommandResult {
+pub async fn showmebeans(ctx: &Context, msg: &Message) -> CommandResult {
     msg.channel_id.send_message(&ctx.http, |m| {
         m.embed(|mut e| {
             e.title("***Beans***");
