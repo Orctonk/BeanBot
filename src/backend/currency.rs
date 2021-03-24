@@ -3,11 +3,6 @@ use rusqlite::NO_PARAMS;
 
 use std::result;
 
-struct Wallet {
-    id: u64,
-    beans: u32,
-}
-
 fn open_connection() -> Result<Connection> {
     return Connection::open("beans.db");
 }
@@ -65,7 +60,7 @@ pub fn withdraw_beans(user: u64, beans: u32) -> result::Result<(),String> {
             println!("Failed to add beans to user with exception {:?}", why);
             return Err("Database Error".to_string());
         },
-        Ok(0) => return Err("Not enough balance".to_string()),
+        Ok(0) => return Err("Not enough beans".to_string()),
         _ => return Ok(())
     };
 }
@@ -87,4 +82,43 @@ pub fn get_bean_balance(user: u64) -> result::Result<u32,String> {
         },
         Ok(balance) => Ok(balance)
     }
+}
+
+pub fn transfer_beans(from: u64, to: u64, amount: u32) -> result::Result<(),String> {
+    let mut conn = match open_connection() {
+        Ok(connection) => connection,
+        Err(why) => {
+            println!("Failed to open wallet DB with error {:?}",why); 
+            return Err("Database error".to_string());
+        }
+    };
+
+    let trans = match conn.transaction() {
+        Ok(transaction) => transaction,
+        Err(why) => {
+            println!("Failed to create transaction with error {:?}",why); 
+            return Err("Database error".to_string());
+        }
+    };
+
+    let res = trans.execute("UPDATE Wallet SET balance=balance-?2 WHERE id=?1 AND balance >= ?2",params![from as i64,amount]);
+    if let Err(why) = res {
+        println!("Failed to withdraw with error {:?}",why); 
+        let _ = trans.rollback();
+        return Err("Database error".to_string());
+    } else if let Ok(0) = res {
+        return Err("Not enough beans".to_string());
+    }
+
+    let res2 = trans.execute("INSERT INTO Wallet VALUES(?1,?2) ON CONFLICT (id) DO UPDATE SET balance=balance+?2 WHERE id=?1",params![to as i64,amount]);
+    if let Err(why) = res2 {
+        println!("Failed to add balance with error {:?}",why); 
+        let _ = trans.rollback();
+        return Err("Database error".to_string());
+    } 
+    if let Err(why) = trans.commit() {
+        println!("Failed to commit with error {:?}",why); 
+        return Err("Database error".to_string());
+    }
+    Ok(())
 }
