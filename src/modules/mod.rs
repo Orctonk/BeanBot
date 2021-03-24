@@ -1,1 +1,1 @@
-pub mod saybeans;
+pub mod beans;

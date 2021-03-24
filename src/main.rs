@@ -5,7 +5,7 @@ use std::{
 };
 
 mod modules;
-use modules::saybeans::*;
+use modules::beans::*;
 
 use serenity::{
     async_trait,
@@ -25,7 +25,7 @@ struct CommandHandler;
 #[async_trait]
 impl EventHandler for CommandHandler{
     async fn ready(&self, ctx: Context, _data_about_bot: Ready){
-        ctx.set_activity(Activity::competing("Bean eating")).await;
+        ctx.set_activity(Activity::listening("Quilla - Beans Beans Beans")).await;
         println!("Hello! I am ready to dispatch beans!");
     }
 
@@ -66,7 +66,7 @@ async fn main(){
         .prefix("!")
         .case_insensitivity(true)
         .on_mention(Some(bot_id)))
-        .group(&SAYBEANS_GROUP);
+        .group(&BEANS_GROUP);
 
     let mut client = Client::builder(&token)
         .framework(framework)
