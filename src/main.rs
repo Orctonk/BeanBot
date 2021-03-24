@@ -15,13 +15,20 @@ use serenity::{
     async_trait,
     framework::{
         StandardFramework,
+        standard::Args,
+        standard::HelpOptions,
+        standard::CommandGroup,
+        standard::CommandResult,
         standard::Configuration,
         standard::DispatchError,
+        standard::help_commands,
         standard::macros::hook,
+        standard::macros::help,
     },
     http::Http,
     model::{
         event::ResumedEvent, 
+        id::UserId,
         channel::Message, 
         gateway::Ready, 
         gateway::Activity,
@@ -62,10 +69,28 @@ async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) {
         DispatchError::OnlyForOwners => {
             let _ = msg.channel_id.say(&ctx.http, &format!("This command is only available to bot owners")).await;
         },
+        DispatchError::TooManyArguments{max,given} => {
+            let _ = msg.channel_id.say(&ctx.http, &format!("Too many arguments! {:?} max, {:?} given",max,given)).await;
+        },
+        DispatchError::NotEnoughArguments{min,given} => {
+            let _ = msg.channel_id.say(&ctx.http, &format!("Too few arguments! {:?} required, {:?} given",min,given)).await;
+        },
         _ => ()
     }
 }
 
+#[help]
+async fn my_help(
+    context: &Context,
+    msg: &Message,
+    args: Args,
+    help_options: &'static HelpOptions,
+    groups: &[&'static CommandGroup],
+    owners: HashSet<UserId>
+) -> CommandResult {
+    let _ = help_commands::with_embeds(context, msg, args, help_options, groups, owners).await;
+    Ok(())
+}
 #[tokio::main]
 async fn main(){
     let args: Vec<String> = env::args().collect();
@@ -100,6 +125,7 @@ async fn main(){
             .on_mention(Some(bot_id))
         )
         .on_dispatch_error(dispatch_error)
+        .help(&MY_HELP)
         .group(&CURRENCY_GROUP)
         .group(&SHOWMEBEANS_GROUP);
 
