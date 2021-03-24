@@ -16,9 +16,11 @@ use serenity::{
     framework::{
         StandardFramework,
         standard::Configuration,
+        standard::DispatchError,
+        standard::macros::hook,
     },
     http::Http,
-    model::{event::ResumedEvent, gateway::Ready, gateway::Activity},
+    model::{event::ResumedEvent, channel::Message, gateway::Ready, gateway::Activity},
     prelude::*,
 };
 
@@ -34,6 +36,27 @@ impl EventHandler for CommandHandler{
 
     async fn resume(&self, _: Context, _: ResumedEvent) {
         println!("Resumed");
+    }
+}
+
+#[hook]
+async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) {
+    match error {
+        DispatchError::Ratelimited(info) => {
+            if info.is_first_try {
+                let _ = msg.channel_id.say(&ctx.http, &format!("Try this again in {} seconds.", info.as_secs())).await;
+            }
+        },
+        DispatchError::LackingPermissions(info) => {
+            let _ = msg.channel_id.say(&ctx.http, &format!("You are missing the following requirements {}", info)).await;
+        },
+        DispatchError::LackingRole => {
+            let _ = msg.channel_id.say(&ctx.http, &format!("You are missing the required role")).await;
+        },
+        DispatchError::OnlyForOwners => {
+            let _ = msg.channel_id.say(&ctx.http, &format!("This command is only available to bot owners")).await;
+        },
+        _ => ()
     }
 }
 
@@ -64,11 +87,13 @@ async fn main(){
     };
 
     let framework = StandardFramework::new()
-    .configure(|c: &mut Configuration| c
-        .owners(owners)
-        .prefix("!")
-        .case_insensitivity(true)
-        .on_mention(Some(bot_id)))
+        .configure(|c: &mut Configuration| c
+            .owners(owners)
+            .prefix("!")
+            .case_insensitivity(true)
+            .on_mention(Some(bot_id))
+        )
+        .on_dispatch_error(dispatch_error)
         .group(&CURRENCY_GROUP)
         .group(&SHOWMEBEANS_GROUP);
 
