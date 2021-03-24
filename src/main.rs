@@ -4,8 +4,12 @@ use std::{
     panic,
 };
 
+mod backend;
+use backend::currency::*;
+
 mod modules;
 use modules::saybeans::*;
+use modules::currency::*;
 
 use serenity::{
     async_trait,
@@ -26,6 +30,7 @@ struct CommandHandler;
 impl EventHandler for CommandHandler{
     async fn ready(&self, ctx: Context, _data_about_bot: Ready){
         ctx.set_activity(Activity::competing("Bean eating")).await;
+        create_wallet_table();
         println!("Hello! I am ready to dispatch beans!");
     }
 
@@ -66,7 +71,8 @@ async fn main(){
         .prefix("!")
         .case_insensitivity(true)
         .on_mention(Some(bot_id)))
-        .group(&SAYBEANS_GROUP);
+        .group(&SAYBEANS_GROUP)
+        .group(&CURRENCY_GROUP);
 
     let mut client = Client::builder(&token)
         .framework(framework)

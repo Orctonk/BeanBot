@@ -12,3 +12,6 @@ Cargo.lock
 
 # Ignore token file for use of seperate toekns and privacy
 token
+
+# Dont include db
+beans.db
