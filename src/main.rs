@@ -13,10 +13,8 @@ use modules::showmebeans::*;
 
 use serenity::{
     async_trait,
-    client::bridge::gateway::ShardManager,
     framework::{
         StandardFramework,
-        standard::macros::group,
         standard::Configuration,
     },
     http::Http,
