@@ -1,6 +1,6 @@
 [package]
 name = "bean_bot"
-version = "0.0.2"
+version = "0.1.1"
 authors = ["Rasmus Lyxell", "Filip Henningsson", "Mimmi Edholm"]
 edition = "2018"
 
