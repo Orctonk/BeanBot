@@ -18,7 +18,7 @@ use serenity::{
         standard::Configuration,
     },
     http::Http,
-    model::{event::ResumedEvent, channel::Message, gateway::Ready, gateway::Activity, id::UserId},
+    model::{event::ResumedEvent, gateway::Ready, gateway::Activity},
     prelude::*,
 };
 

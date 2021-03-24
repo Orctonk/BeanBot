@@ -35,6 +35,10 @@ pub async fn showme(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 pub async fn give(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let userid = msg.author.id.0;
+    if msg.mentions.len() < 1 {
+        msg.channel_id.say(&ctx.http, "Who do you want to give the beans to?").await?;
+        return Ok(());
+    } 
     let recipient = &msg.mentions[0];
     let _ = args.single::<String>(); // First arg is mention
     match args.single::<u32>(){
