@@ -46,15 +46,31 @@ async fn main(){
     } 
     let token = std::fs::read_to_string(std::path::Path::new(&args[1])).expect("Failed to open token file");
 
-    let owners = vec![UserId(106865750614011904)].into_iter().collect();
+    let http = Http::new_with_token(&token);
+
+    let (owners, bot_id) = match http.get_current_application_info().await {
+        Ok(info) => {
+            let mut owners = HashSet::new();
+            if let Some(team) = info.team {
+                owners.insert(team.owner_user_id);
+            } else {
+                owners.insert(info.owner.id);
+            }
+            match http.get_current_user().await {
+                Ok(bot_id) => (owners, bot_id.id),
+                Err(why) => panic!("Could not access the bot id: {:?}", why),
+            }
+        },
+        Err(why) => panic!("Could not access application info: {:?}", why),
+    };
 
     let framework = StandardFramework::new()
     .configure(|c: &mut Configuration| c
-               .owners(owners)
-               .prefix("!")
-               .case_insensitivity(true)
-                .on_mention(Some(UserId(354361968091594752))))
-               .group(&SAYBEANS_GROUP);
+        .owners(owners)
+        .prefix("!")
+        .case_insensitivity(true)
+        .on_mention(Some(bot_id)))
+        .group(&SAYBEANS_GROUP);
 
     let mut client = Client::builder(&token)
         .framework(framework)
