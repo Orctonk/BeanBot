@@ -45,6 +45,8 @@ async fn main(){
     } 
     let token = std::fs::read_to_string(std::path::Path::new(&args[1])).expect("Failed to open token file");
 
+    println!("{}", backend::markov::generate_sentence(0,0));
+
     let http = Http::new_with_token(&token);
 
     let (owners, bot_id) = match http.get_current_application_info().await {

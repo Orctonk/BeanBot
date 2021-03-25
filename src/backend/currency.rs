@@ -55,13 +55,13 @@ pub fn withdraw_beans(user: u64, beans: u32) -> result::Result<(),String> {
     let res = conn.execute(
         "UPDATE Wallet SET balance=balance-?2 WHERE id=?1 AND balance >= ?2",params![user as i64,beans]
     );
-    match res {
+    return match res {
         Err(why) => {
             println!("Failed to add beans to user with exception {:?}", why);
-            return Err("Database Error".to_string());
+            Err("Database Error".to_string())
         },
-        Ok(0) => return Err("Not enough beans".to_string()),
-        _ => return Ok(())
+        Ok(0) => Err("Not enough beans".to_string()),
+        _ => Ok(())
     };
 }
 
