@@ -5,7 +5,7 @@ use std::{
 };
 
 struct SettingsKey;
-use ini::Ini;   
+use ini::Ini;
 impl TypeMapKey for SettingsKey {
     type Value = Ini;
 }
@@ -18,6 +18,7 @@ use backend::translation::*;
 mod modules;
 use modules::currency::*;
 use modules::showmebeans::*;
+use modules::markov::*;
 use modules::translation::*;
 
 use serenity::{
@@ -36,15 +37,17 @@ use serenity::{
     },
     http::Http,
     model::{
-        event::ResumedEvent, 
+        event::ResumedEvent,
         id::UserId,
-        channel::Message, 
-        gateway::Ready, 
+        channel::Message,
+        gateway::Ready,
         gateway::Activity,
         application::TeamMember,
     },
     prelude::*,
 };
+use markov::Chain;
+use crate::backend::markov::init_chain;
 
 struct CommandHandler;
 
@@ -59,6 +62,7 @@ impl EventHandler for CommandHandler{
             }
         };
         create_wallet_table();
+        init_chain(&ctx).await;
         initialize_translation(&ctx, &settings).await;
         ctx.set_activity(Activity::listening("Quilla - Beans Beans Beans")).await;
         println!("Hello! I am ready to dispatch beans!");
@@ -121,7 +125,7 @@ async fn main(){
         Err(why) => panic!("Failed to load settings.ini! Error: {:?}", why),
         Ok(loaded) => loaded
     };
-    
+
     let token = match setfile.general_section().get("discord_api_token") {
         None => panic!("Discord API token is not set in settings.ini"),
         Some(token) => token
@@ -157,6 +161,8 @@ async fn main(){
         .on_dispatch_error(dispatch_error)
         .help(&MY_HELP)
         .group(&CURRENCY_GROUP)
+        .group(&SHOWMEBEANS_GROUP)
+        .group(&MARKOV_GROUP)
         .group(&SHOWMEBEANS_GROUP)
         .group(&TRANSLATION_GROUP);
 
