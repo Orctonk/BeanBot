@@ -10,6 +10,7 @@ use backend::currency::*;
 mod modules;
 use modules::currency::*;
 use modules::showmebeans::*;
+use modules::markov::*;
 
 use serenity::{
     async_trait,
@@ -21,6 +22,8 @@ use serenity::{
     model::{event::ResumedEvent, gateway::Ready, gateway::Activity},
     prelude::*,
 };
+use markov::Chain;
+use crate::backend::markov::init_chain;
 
 struct CommandHandler;
 
@@ -28,6 +31,7 @@ struct CommandHandler;
 impl EventHandler for CommandHandler{
     async fn ready(&self, ctx: Context, _data_about_bot: Ready){
         create_wallet_table();
+        init_chain(&ctx).await;
         ctx.set_activity(Activity::listening("Quilla - Beans Beans Beans")).await;
         println!("Hello! I am ready to dispatch beans!");
     }
@@ -44,8 +48,6 @@ async fn main(){
         panic!("Please provide a file containing the bot token");
     } 
     let token = std::fs::read_to_string(std::path::Path::new(&args[1])).expect("Failed to open token file");
-
-    println!("{}", backend::markov::generate_sentence(0,0));
 
     let http = Http::new_with_token(&token);
 
@@ -72,7 +74,8 @@ async fn main(){
         .case_insensitivity(true)
         .on_mention(Some(bot_id)))
         .group(&CURRENCY_GROUP)
-        .group(&SHOWMEBEANS_GROUP);
+        .group(&SHOWMEBEANS_GROUP)
+        .group(&MARKOV_GROUP);
 
     let mut client = Client::builder(&token)
         .framework(framework)
