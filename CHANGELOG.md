@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 0.1.3 *Sprout*
+* Added some new commands in the currency module:
+    * **eat** lets the user eat some beans.
+    * **daily**, **weekly**, **monthly** and **yearly** gives the user beans but has a cooldown time.
+* Made the backend currency module more robust and expandable by adding custom error enums which each correspond to an error which can occur and optionally provides additional information
+
 ## Version 0.1.2 *Sprout*
 * Updated documentation for currency module
 * Added some error messaging on failed dispatches
