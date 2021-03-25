@@ -92,6 +92,7 @@ pub fn get_bean_balance(user: u64) -> Result<u32,CurrencyError> {
 
     let res = conn.query_row("SELECT balance FROM Wallet WHERE id=?1",params![user as i64], |row| row.get(0));
     match res {
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(0),
         Err(why) => db_err!("Failed to get balance with error {:?}",why),
         Ok(balance) => Ok(balance)
     }
