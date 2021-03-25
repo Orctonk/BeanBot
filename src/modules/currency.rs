@@ -11,11 +11,16 @@ use rand::Rng;
 use crate::backend::currency::*;
 
 const DB_ERROR_MESSAGE: &str = "Someone spilled beans on the servers. Please try again in a bit!";
+const DAILY_BEAN_AMOUNT: u32 = 1;
+const WEEKLY_BEAN_AMOUNT: u32 = 5;
+const MONTHLY_BEAN_AMOUNT: u32 = 10;
+const YEARLY_BEAN_AMOUNT: u32 = 50;
+
 #[group]
 #[prefix = "beans"]
 #[description = "A group with commands related to the bean currency"]
 #[summary = "Bean currency commands"]
-#[commands(gimme,showme,give,eat)]
+#[commands(gimme,showme,give,eat,daily,weekly,monthly,yearly)]
 #[default_command(showme)]
 struct Currency;
 
@@ -101,4 +106,79 @@ pub async fn eat(ctx: &Context, msg: &Message) -> CommandResult {
     };
 
     Ok(())
+}
+
+#[command]
+#[description = "Get your daily bean allowance"]
+#[max_args(0)]
+pub async fn daily(ctx: &Context, msg: &Message) -> CommandResult {
+    let userid = msg.author.id.0;
+    match claim_daily(userid,DAILY_BEAN_AMOUNT) {
+        Err(CurrencyError::NotReadyYet(timeleft)) => {
+            let hours = timeleft.num_hours();
+            let mins = timeleft.num_minutes() - hours * 60;
+            let secs = timeleft.num_seconds() - timeleft.num_minutes() * 60;
+            msg.channel_id.say(&ctx.http, &format!("You have already had your daily beans, try again in `{:?}h {:?}m {:?}s`",hours,mins,secs )).await?
+        },
+        Ok(_) => msg.channel_id.say(&ctx.http, &format!("You've claimed your daily `{:?}` beans",DAILY_BEAN_AMOUNT)).await?,
+        Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
+    };
+    return Ok(());
+}
+
+#[command]
+#[description = "Get your weekly bean allowance"]
+#[max_args(0)]
+pub async fn weekly(ctx: &Context, msg: &Message) -> CommandResult {
+    let userid = msg.author.id.0;
+    match claim_weekly(userid,WEEKLY_BEAN_AMOUNT) {
+        Err(CurrencyError::NotReadyYet(timeleft)) => {
+            let days = timeleft.num_days();
+            let hours = timeleft.num_hours() - days*24;
+            let mins = timeleft.num_minutes() - timeleft.num_hours() * 60;
+            let secs = timeleft.num_seconds() - timeleft.num_minutes() * 60;
+            msg.channel_id.say(&ctx.http, &format!("You have already had your weekly beans, try again in `{:?} days, {:?}h {:?}m {:?}s`",days,hours,mins,secs )).await?
+        },
+        Ok(_) => msg.channel_id.say(&ctx.http, &format!("You've claimed your weekly `{:?}` beans",WEEKLY_BEAN_AMOUNT)).await?,
+        Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
+    };
+    return Ok(());
+}
+
+#[command]
+#[description = "Get your monthly bean allowance"]
+#[max_args(0)]
+pub async fn monthly(ctx: &Context, msg: &Message) -> CommandResult {
+    let userid = msg.author.id.0;
+    match claim_monthly(userid,MONTHLY_BEAN_AMOUNT) {
+        Err(CurrencyError::NotReadyYet(timeleft)) => {
+            let days = timeleft.num_days();
+            let hours = timeleft.num_hours() - days*24;
+            let mins = timeleft.num_minutes() - timeleft.num_hours() * 60;
+            let secs = timeleft.num_seconds() - timeleft.num_minutes() * 60;
+            msg.channel_id.say(&ctx.http, &format!("You have already had your monthly beans, try again in `{:?} days, {:?}h {:?}m {:?}s`",days,hours,mins,secs )).await?
+        },
+        Ok(_) => msg.channel_id.say(&ctx.http, &format!("You've claimed your monthly `{:?}` beans",MONTHLY_BEAN_AMOUNT)).await?,
+        Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
+    };
+    return Ok(());
+}
+
+#[command]
+#[description = "Get your yearly bean allowance"]
+#[max_args(0)]
+pub async fn yearly(ctx: &Context, msg: &Message) -> CommandResult {
+    let userid = msg.author.id.0;
+    match claim_yearly(userid,YEARLY_BEAN_AMOUNT) {
+        Err(CurrencyError::NotReadyYet(timeleft)) => {
+            let days = timeleft.num_days();
+            let hours = timeleft.num_hours() - days*24;
+            let mins = timeleft.num_minutes() - timeleft.num_hours() * 60;
+            let secs = timeleft.num_seconds() - timeleft.num_minutes() * 60;
+            msg.channel_id.say(&ctx.http, &format!("You have already had your yearly beans, try again in `{:?} days, {:?}h {:?}m {:?}s`",days,hours,mins,secs )).await?
+        },
+        Ok(_) => msg.channel_id.say(&ctx.http, &format!("You've claimed your yearly `{:?}` beans",YEARLY_BEAN_AMOUNT)).await?,
+        Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
+    };
+    return Ok(());
 }

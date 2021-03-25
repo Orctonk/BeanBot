@@ -1,6 +1,9 @@
 use rusqlite::{params, Connection};
 use rusqlite::NO_PARAMS;
 
+use chrono::prelude::*;
+use chrono::Duration;
+
 pub enum CurrencyError {
     InsufficientBalance,
     InternalDatabaseError,
@@ -114,6 +117,174 @@ pub fn transfer_beans(from: u64, to: u64, amount: u32) -> Result<(),CurrencyErro
     }
 
     let res2 = trans.execute("INSERT INTO Wallet VALUES(?1,?2) ON CONFLICT (id) DO UPDATE SET balance=balance+?2 WHERE id=?1",params![to as i64,amount]);
+    if let Err(why) = res2 {
+        let _ = trans.rollback();
+        db_err!("Failed to add balance with error {:?}",why);
+    } 
+    if let Err(why) = trans.commit() {
+        db_err!("Failed to commit with error {:?}",why);
+    }
+    Ok(())
+}
+
+pub fn claim_daily(user: u64, amount: u32) -> Result<(),CurrencyError> {
+    let mut conn = match open_connection() {
+        Ok(connection) => connection,
+        Err(why) => db_err!("Failed to open wallet DB with error {:?}",why)
+    };
+
+    let res: rusqlite::Result<DateTime<Utc>> = conn.query_row("SELECT daily FROM Claims WHERE id=?1",params![user as i64], |r| r.get(0));
+    let cd = match res {
+        Err(rusqlite::Error::QueryReturnedNoRows) => Duration::zero(),
+        Err(why) => db_err!("Failed to claim daily with error {:?}",why),
+        Ok(date) => date + Duration::days(1) - Utc::now()
+    };
+
+    if cd > Duration::zero() {
+        return Err(CurrencyError::NotReadyYet(cd));
+    }
+
+    let trans = match conn.transaction() {
+        Ok(transaction) => transaction,
+        Err(why) => db_err!("Failed to create transaction with error {:?}",why)
+    };
+
+    let res = trans.execute(
+        "INSERT INTO Claims VALUES(?1,datetime('now'), datetime('00:00'),datetime('00:00'),datetime('00:00')) 
+        ON CONFLICT (id) DO UPDATE SET daily=datetime('now') WHERE id=?1",params![user as i64]);
+    if let Err(why) = res {
+        let _ = trans.rollback();
+        db_err!("Failed update claims table with error {:?}",why); 
+    } 
+    let res2 = trans.execute(
+        "INSERT INTO Wallet VALUES(?1,?2) 
+        ON CONFLICT (id) DO UPDATE SET balance=balance+?2 WHERE id=?1",params![user as i64, amount]);
+    if let Err(why) = res2 {
+        let _ = trans.rollback();
+        db_err!("Failed to add balance with error {:?}",why);
+    } 
+    if let Err(why) = trans.commit() {
+        db_err!("Failed to commit with error {:?}",why);
+    }
+    Ok(())
+}
+
+pub fn claim_weekly(user: u64, amount: u32) -> Result<(),CurrencyError> {
+    let mut conn = match open_connection() {
+        Ok(connection) => connection,
+        Err(why) => db_err!("Failed to open wallet DB with error {:?}",why)
+    };
+
+    let res: rusqlite::Result<DateTime<Utc>> = conn.query_row("SELECT weekly FROM Claims WHERE id=?1",params![user as i64], |r| r.get(0));
+    let cd = match res {
+        Err(rusqlite::Error::QueryReturnedNoRows) => Duration::zero(),
+        Err(why) => db_err!("Failed to claim weekly with error {:?}",why),
+        Ok(date) => date + Duration::weeks(1) - Utc::now()
+    };
+
+    if cd > Duration::zero() {
+        return Err(CurrencyError::NotReadyYet(cd));
+    }
+
+    let trans = match conn.transaction() {
+        Ok(transaction) => transaction,
+        Err(why) => db_err!("Failed to create transaction with error {:?}",why)
+    };
+
+    let res = trans.execute(
+        "INSERT INTO Claims VALUES(?1,datetime('00:00'),datetime('now'),datetime('00:00'),datetime('00:00')) 
+        ON CONFLICT (id) DO UPDATE SET weekly=datetime('now') WHERE id=?1",params![user as i64]);
+    if let Err(why) = res {
+        let _ = trans.rollback();
+        db_err!("Failed update claims table with error {:?}",why); 
+    } 
+    let res2 = trans.execute(
+        "INSERT INTO Wallet VALUES(?1,?2) 
+        ON CONFLICT (id) DO UPDATE SET balance=balance+?2 WHERE id=?1",params![user as i64, amount]);
+    if let Err(why) = res2 {
+        let _ = trans.rollback();
+        db_err!("Failed to add balance with error {:?}",why);
+    } 
+    if let Err(why) = trans.commit() {
+        db_err!("Failed to commit with error {:?}",why);
+    }
+    Ok(())
+}
+
+pub fn claim_monthly(user: u64, amount: u32) -> Result<(),CurrencyError> {
+    let mut conn = match open_connection() {
+        Ok(connection) => connection,
+        Err(why) => db_err!("Failed to open wallet DB with error {:?}",why)
+    };
+
+    let res: rusqlite::Result<DateTime<Utc>> = conn.query_row("SELECT monthly FROM Claims WHERE id=?1",params![user as i64], |r| r.get(0));
+    let cd = match res {
+        Err(rusqlite::Error::QueryReturnedNoRows) => Duration::zero(),
+        Err(why) => db_err!("Failed to claim monthly with error {:?}",why),
+        Ok(date) => date + Duration::days(30) - Utc::now()
+    };
+
+    if cd > Duration::zero() {
+        return Err(CurrencyError::NotReadyYet(cd));
+    }
+
+    let trans = match conn.transaction() {
+        Ok(transaction) => transaction,
+        Err(why) => db_err!("Failed to create transaction with error {:?}",why)
+    };
+
+    let res = trans.execute(
+        "INSERT INTO Claims VALUES(?1,datetime('00:00'),datetime('00:00'),datetime('now'),datetime('00:00')) 
+        ON CONFLICT (id) DO UPDATE SET monthly=datetime('now') WHERE id=?1",params![user as i64]);
+    if let Err(why) = res {
+        let _ = trans.rollback();
+        db_err!("Failed update claims table with error {:?}",why); 
+    } 
+    let res2 = trans.execute(
+        "INSERT INTO Wallet VALUES(?1,?2) 
+        ON CONFLICT (id) DO UPDATE SET balance=balance+?2 WHERE id=?1",params![user as i64, amount]);
+    if let Err(why) = res2 {
+        let _ = trans.rollback();
+        db_err!("Failed to add balance with error {:?}",why);
+    } 
+    if let Err(why) = trans.commit() {
+        db_err!("Failed to commit with error {:?}",why);
+    }
+    Ok(())
+}
+
+pub fn claim_yearly(user: u64, amount: u32) -> Result<(),CurrencyError> {
+    let mut conn = match open_connection() {
+        Ok(connection) => connection,
+        Err(why) => db_err!("Failed to open wallet DB with error {:?}",why)
+    };
+
+    let res: rusqlite::Result<DateTime<Utc>> = conn.query_row("SELECT yearly FROM Claims WHERE id=?1",params![user as i64], |r| r.get(0));
+    let cd = match res {
+        Err(rusqlite::Error::QueryReturnedNoRows) => Duration::zero(),
+        Err(why) => db_err!("Failed to claim yearly with error {:?}",why),
+        Ok(date) => date + Duration::days(365) - Utc::now()
+    };
+
+    if cd > Duration::zero() {
+        return Err(CurrencyError::NotReadyYet(cd));
+    }
+
+    let trans = match conn.transaction() {
+        Ok(transaction) => transaction,
+        Err(why) => db_err!("Failed to create transaction with error {:?}",why)
+    };
+
+    let res = trans.execute(
+        "INSERT INTO Claims VALUES(?1,datetime('00:00'),datetime('00:00'),datetime('00:00'),datetime('now')) 
+        ON CONFLICT (id) DO UPDATE SET yearly=datetime('now') WHERE id=?1",params![user as i64]);
+    if let Err(why) = res {
+        let _ = trans.rollback();
+        db_err!("Failed update claims table with error {:?}",why); 
+    } 
+    let res2 = trans.execute(
+        "INSERT INTO Wallet VALUES(?1,?2) 
+        ON CONFLICT (id) DO UPDATE SET balance=balance+?2 WHERE id=?1",params![user as i64, amount]);
     if let Err(why) = res2 {
         let _ = trans.rollback();
         db_err!("Failed to add balance with error {:?}",why);
