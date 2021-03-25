@@ -10,6 +10,7 @@ use rand::Rng;
 
 use crate::backend::currency::*;
 
+const DB_ERROR_MESSAGE: &str = "Someone spilled beans on the servers. Please try again in a bit!";
 #[group]
 #[prefix = "beans"]
 #[description = "A group with commands related to the bean currency"]
@@ -31,8 +32,11 @@ pub async fn gimme(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
         Err(_) => 5,
         Ok(am) => am
     };
-    add_beans(userid, amount);
-    msg.channel_id.say(&ctx.http, &format!("Here, have `{:?}` beans!",amount)).await?;
+    let _ = match add_beans(userid, amount) {
+        Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?,
+        Ok(()) => msg.channel_id.say(&ctx.http, &format!("Here, have `{:?}` beans!",amount)).await?
+    };
+    
     Ok(())
 }
 
@@ -42,7 +46,7 @@ pub async fn gimme(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
 pub async fn showme(ctx: &Context, msg: &Message) -> CommandResult {
     let userid = msg.author.id.0;
     let _ = match get_bean_balance(userid) {
-        Err(why) => msg.channel_id.say(&ctx.http, "Failed to get beans: ".to_owned() + &why).await?,
+        Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?,
         Ok(bal) => msg.channel_id.say(&ctx.http, &format!("You have `{:?}` beans",bal)).await?
     };
     Ok(())
@@ -59,12 +63,12 @@ pub async fn give(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
     let recipient = &msg.mentions[0];
     let _ = args.single::<String>(); // First arg is mention
     match args.single::<u32>(){
-        Err(_) => 
-            msg.channel_id.say(&ctx.http, "Invalid amount specified").await?,
+        Err(_) =>  msg.channel_id.say(&ctx.http, "Invalid amount specified").await?,
         Ok(am) => {
             match transfer_beans(userid, recipient.id.0, am) {
-                Err(why) => msg.channel_id.say(&ctx.http, &format!("Failed to give beans: {:?}",why)).await?,
-                Ok(_) => msg.channel_id.say(&ctx.http, &format!("Gave {:?} `{:?}` beans",recipient.name,am)).await?
+                Err(CurrencyError::InsufficientBalance) => msg.channel_id.say(&ctx.http, "You can't give beans you dont have!").await?,
+                Ok(_) => msg.channel_id.say(&ctx.http, &format!("Gave {:?} `{:?}` beans",recipient.name,am)).await?,
+                Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
             }
         }
     };
@@ -78,21 +82,22 @@ pub async fn give(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
 pub async fn eat(ctx: &Context, msg: &Message) -> CommandResult {
     let userid = msg.author.id.0;
     let max = match get_bean_balance(userid) {
-        Err(why) => {
-            msg.channel_id.say(&ctx.http, &format!("Cant eat any beans: {:?}",why)).await?;
-            return Ok(());
+        Err(_) => { 
+            msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?; 
+            return Ok(()); 
         },
         Ok(amount) => amount
     };
     let upper = std::cmp::min(max, 10);
     if upper <= 0{
-        msg.channel_id.say(&ctx.http, &format!("You don't have any beans to eat")).await?;
+        msg.channel_id.say(&ctx.http, "You don't have any beans to eat!").await?;
         return Ok(());
     }
     let beans_eaten = rand::thread_rng().gen_range(1..(upper+1));
     match withdraw_beans(userid, beans_eaten){
-        Err(why) => msg.channel_id.say(&ctx.http, &format!("Bean eating went wrong: {:?}", why)).await?,
-        Ok(_) => msg.channel_id.say(&ctx.http, &format!("Ate `{:?}` beans",beans_eaten)).await?
+        Err(CurrencyError::InsufficientBalance) => msg.channel_id.say(&ctx.http, "You don't have any beans to eat!").await?,
+        Ok(_) => msg.channel_id.say(&ctx.http, &format!("Ate `{:?}` beans",beans_eaten)).await?,
+        Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
     };
 
     Ok(())
