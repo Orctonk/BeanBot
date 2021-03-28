@@ -21,6 +21,7 @@ mod modules;
 
 use modules::currency::*;
 use modules::showmebeans::*;
+use modules::spinthebean::*;
 use modules::beanverse::*;
 use modules::translation::*;
 use modules::specialbeans::*;
@@ -178,7 +179,9 @@ async fn main(){
         .group(&SPECIALBEANS_GROUP)
         .group(&BEANVERSE_GROUP)
         .group(&BEANBIRD_GROUP)
-        .group(&BEANADMIN_GROUP);
+        .group(&BEANADMIN_GROUP)
+        .group(&SHOWMEBEANS_GROUP)
+        .group(&SPINTHEBEAN_GROUP);
 
     let mut client = Client::builder(&token)
         .framework(framework)
