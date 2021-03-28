@@ -11,8 +11,11 @@ struct SpinTheBean;
 
 #[command]
 #[description = "Spins a bean to select a random user from the callers currents channel. Can alternatively be used with paramaters to choose between parameters"]
+#[usage = "[list of items or blank for users in voice channel]"]
+#[example("\"Black bean\", Edamame \"String Bean\"")]
+#[only_in("guilds")]
 #[delimiters(",", " ")]
-#[aliases(stb)]
+#[aliases(stb, spin)]
 pub async fn spinthebean(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() == 0{
         let voice_states: HashMap<UserId, VoiceState>;
