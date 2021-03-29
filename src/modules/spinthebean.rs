@@ -42,12 +42,17 @@ pub async fn spinthebean(ctx: &Context, msg: &Message, mut args: Args) -> Comman
                 return Ok(())
             },
         };
+        let mut names: Vec<String> = Vec::new();
         let members: Vec<Member> = match channel.members(&ctx.cache).await{
             Ok(mem) => {
                 let mut filtered = Vec::new();
                 for x in mem.iter(){
                     if !x.user.bot {
-                        filtered.push(x.clone())
+                        filtered.push(x.clone());
+                        names.push(match &x.nick {
+                            Some(nick) => nick.to_string(),
+                            _ => x.user.name.to_string()
+                        })
                     }
                 }
                 filtered
@@ -57,8 +62,24 @@ pub async fn spinthebean(ctx: &Context, msg: &Message, mut args: Args) -> Comman
                 return Ok(())
             }
         };
+
         let result = members.get(random::<usize>() % members.len()).unwrap();
-        let _ = msg.channel_id.say(&ctx.http, format!("The bean landed on *{}*!", result.display_name())).await;
+        let _ = msg.channel_id.send_message(&ctx.http, |m|{
+            m.embed(|e| {
+                e.author(|f|
+                    f.name("Kanna Beans")
+                        .icon_url("https://cdn.discordapp.com/avatars/354361968091594752/3cd9f38df78c761bd5b059797cbd6fec.png?size=128"))
+                    .title(format!("The bean landed on __{}__", match &result.nick {
+                        None => {result.user.name.to_string()}
+                        Some(nick) => {nick.to_string()}
+                    }))
+                    .color(16750123)
+                    .thumbnail("https://media1.tenor.com/images/f5b2182314ec6603e4015cb03497bdf9/tenor.gif?itemid=10565478");
+                for (i, mem) in members.iter().enumerate(){
+                    e.field(&names[i], if mem.user.eq(&result.user) {":point_up:"} else {"_"}, true);
+                }
+                e
+            })}).await;
     } else{
         let mut valid_args: Vec<String> = Vec::new();
         for _ in 0..args.len(){
@@ -70,7 +91,20 @@ pub async fn spinthebean(ctx: &Context, msg: &Message, mut args: Args) -> Comman
         let rand_index: usize = random::<usize>() % valid_args.len();
         for x in 0..valid_args.len(){
             if rand_index == x{
-                let _ = msg.channel_id.say(&ctx.http, format!("The bean landed on *{}*!", valid_args[x])).await;
+                eprintln!("{}", "Sending embed");
+                let _ = msg.channel_id.send_message(&ctx.http, |m|{
+                    m.embed(|e| {
+                            e.author(|f|
+                                f.name("Kanna Beans")
+                                    .icon_url("https://cdn.discordapp.com/avatars/354361968091594752/3cd9f38df78c761bd5b059797cbd6fec.png?size=128"))
+                            .title(format!("The bean landed on __{}__", valid_args[x]))
+                            .color(16750123)
+                            .thumbnail("https://media1.tenor.com/images/f5b2182314ec6603e4015cb03497bdf9/tenor.gif?itemid=10565478");
+                        for (i, arg) in valid_args.iter().enumerate(){
+                            e.field(arg, if i == rand_index {":point_up:"} else {"_"}, true);
+                        }
+                        e
+                    })}).await;
                 break;
             }
         }
