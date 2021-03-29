@@ -6,6 +6,7 @@ use std::{
 
 mod backend;
 use backend::currency::*;
+use backend::translation::*;
 
 mod modules;
 use modules::currency::*;
@@ -93,6 +94,13 @@ async fn my_help(
 }
 #[tokio::main]
 async fn main(){
+    match create_token().await {
+        Err(_) => println!("Failed to get token!"),
+        Ok(token) => match translate("Testing, One, two, one, two".to_string(), token, Some("sv".to_string()), None).await {
+            Err(_) => println!("Failed to translate!"),
+            Ok(res) => println!("Result: {:?}, Lang: {:?}", res.translatedText, res.detectedSourceLanguage)
+        }
+    }
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         panic!("Please provide a file containing the bot token");

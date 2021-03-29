@@ -12,6 +12,8 @@ Cargo.lock
 
 # Ignore token file for use of seperate toekns and privacy
 token
+google-api-token
+BeanBot*.json
 
 # Dont include db
 beans.db
