@@ -1,5 +1,7 @@
 use serenity::prelude::*;
 use serenity::model::prelude::*;
+use serenity::http::CacheHttp;
+use serenity::model::id::UserId; 
 use serenity::framework::standard::{
     CommandResult,
     Args,
@@ -20,7 +22,7 @@ const YEARLY_BEAN_AMOUNT: u32 = 50;
 #[prefix = "beans"]
 #[description = "A group with commands related to the bean currency"]
 #[summary = "Bean currency commands"]
-#[commands(gimme,showme,give,eat,daily,weekly,monthly,yearly)]
+#[commands(gimme,showme,give,eat,daily,weekly,monthly,yearly,beanmaster)]
 #[default_command(showme)]
 struct Currency;
 
@@ -178,6 +180,26 @@ pub async fn yearly(ctx: &Context, msg: &Message) -> CommandResult {
             msg.channel_id.say(&ctx.http, &format!("You have already had your yearly beans, try again in `{:?} days, {:?}h {:?}m {:?}s`",days,hours,mins,secs )).await?
         },
         Ok(_) => msg.channel_id.say(&ctx.http, &format!("You've claimed your yearly `{:?}` beans",YEARLY_BEAN_AMOUNT)).await?,
+        Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
+    };
+    return Ok(());
+}
+#[command]
+#[description = "Call upon the Bean Master, the Master of the Beans, the boi with the most beans."]
+#[max_args(0)]
+pub async fn beanmaster(ctx: &Context, msg: &Message) -> CommandResult {
+    //let phraces = vec!["The Bean Master is {:?}"];
+    let bean_master = get_highest_balance(); 
+    match bean_master {
+        Ok(bean) =>{
+            let master_id = UserId (bean);
+            let master_user = master_id.to_user(ctx).await;
+            match master_user {
+                Ok(master) => msg.channel_id.say(&ctx.http, &format!("The Bean Master is {:?}", master.name)).await?,
+                Err(_) => msg.channel_id.say(&ctx.http, "There is no beanmaster, you are free").await?
+            }
+    },
+
         Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
     };
     return Ok(());

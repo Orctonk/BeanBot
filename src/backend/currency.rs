@@ -295,3 +295,16 @@ pub fn claim_yearly(user: u64, amount: u32) -> Result<(),CurrencyError> {
     }
     Ok(())
 }
+
+pub fn get_highest_balance() ->  Result<u64,CurrencyError> {
+    let mut conn = match open_connection() {
+        Ok(connection) => connection,
+        Err(why) => db_err!("Failed to open wallet DB with error {:?}",why)
+    };
+    let res : rusqlite::Result<i64> = conn.query_row("SELECT id FROM Wallet ORDER BY balance DESC LIMIT 1",params![], |row| row.get(0));
+    match res {
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(0),
+        Err(why) => db_err!("Failed to get balance with error {:?}",why),
+        Ok(id) => Ok(id as u64)
+    } 
+}
