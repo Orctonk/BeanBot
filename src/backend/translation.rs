@@ -24,6 +24,7 @@ pub struct Detection {
 
 pub struct TranslationContextKey;
 
+#[derive(Debug,Clone)]
 pub struct TranslationContext {
     key: KeyFile,
     pub token: String,
@@ -219,7 +220,7 @@ struct DetectionResultRaw {
     data: DetectionDataRaw
 }
 
-#[derive(Debug,Serialize,Deserialize)]
+#[derive(Debug,Serialize,Deserialize,Clone)]
 struct KeyFile{
     r#type: String,
     project_id: String,
