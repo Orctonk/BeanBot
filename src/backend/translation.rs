@@ -11,7 +11,7 @@ use ini::Ini;
 #[allow(non_snake_case)]
 pub struct Translation {
     pub translatedText: String,
-    pub detectedSourceLanguage: String
+    pub detectedSourceLanguage: Option<String>
 }
 
 #[derive(Debug,Serialize,Deserialize,Clone)]
@@ -37,6 +37,7 @@ pub enum TranslationError {
     TokenRefreshError,
     TranslationError,
     DetectionError,
+    ResponseError,
 }
 
 pub async fn initialize_translation(context: &Context, settings: &Ini){
@@ -71,12 +72,17 @@ pub async fn translate_text(ctx: &TranslationContext, text: String, target: Opti
             println!("Failed translate query, error: {:?}",why);
             return Err(TranslationError::TranslationError);
         },
-        Ok(content) => match content.json::<TranslationResultRaw>().await {
-            Err(why) => {
-                println!("Failed translate query, error: {:?}",why);
-                return Err(TranslationError::TranslationError);
-            },
-            Ok(text) => text
+        Ok(content) => if content.status().is_success() {
+            match content.json::<TranslationResultRaw>().await {
+                Err(why) => {
+                    println!("Failed translate query, error: {:?}",why);
+                    return Err(TranslationError::TranslationError);
+                },
+                Ok(text) => text
+            }
+        } else {
+            println!("Translation query did not return success, HTTP code: {:?}",content.status());
+            return Err(TranslationError::ResponseError);
         }
     };
 
@@ -101,15 +107,68 @@ pub async fn detect_text(ctx: &TranslationContext, text: String) -> std::result:
             println!("Failed detect query, error: {:?}",why);
             return Err(TranslationError::DetectionError);
         },
-        Ok(content) => match content.json::<DetectionResultRaw>().await {
-            Err(why) => {
-                println!("Failed detect query, error: {:?}",why);
-                return Err(TranslationError::DetectionError);
-            },
-            Ok(text) => text
+        Ok(content) => if content.status().is_success() {
+            match content.json::<DetectionResultRaw>().await {
+                Err(why) => {
+                    println!("Failed detect query, error: {:?}",why);
+                    return Err(TranslationError::DetectionError);
+                },
+                Ok(text) => text
+            }
+        } else {
+            println!("Detection query did not return success, HTTP code: {:?}",content.status());
+            return Err(TranslationError::ResponseError);
         }
     };
     return Ok(resp.data.detections[0][0].clone());
+}
+
+pub async fn refresh_context(ctx: TranslationContext) -> Result<TranslationContext,TranslationError> {
+    let mut header = Header::new(Algorithm::RS256);
+    header.typ = Some("JWT".to_string());
+    let enc_key = match EncodingKey::from_rsa_pem(ctx.key.private_key.as_bytes()) {
+        Err(why) => {
+            println!("Failed to create JWT encoding key: {:?}",why);
+            return Err(TranslationError::KeyEncodingError);
+        },
+        Ok(key) => key
+    };
+    let expiry = Utc::now() + Duration::hours(1);
+    let claims = Claims {
+        iss: ctx.key.client_email.clone(),
+        scope: "https://www.googleapis.com/auth/cloud-translation".to_string(),
+        aud: "https://oauth2.googleapis.com/token".to_string(),
+        exp: expiry.timestamp(),
+        iat: Utc::now().timestamp()
+    };
+
+    let jwt = match encode(&header, &claims, &enc_key) {
+        Err(e) => {
+            println!("Failed to encode JWT: {:?}",e);
+            return Err(TranslationError::TokenRefreshError);
+        },
+        Ok(res) => res
+    };
+
+    let params = [("grant_type","urn:ietf:params:oauth:grant-type:jwt-bearer"),("assertion",&jwt)];
+    let client = reqwest::Client::new();
+    let resp = match client.post("https://oauth2.googleapis.com/token")
+        .form(&params)
+        .send()
+        .await  {
+        Err(why) => {
+            println!("Failed to get token from auth service: {:?}",why);
+            return Err(TranslationError::TokenRefreshError);
+        },
+        Ok(resp) => match resp.json::<TokenResult>().await {
+            Err(why) => {
+                println!("Failed to decode token result: {:?}",why);
+                return Err(TranslationError::TokenRefreshError);
+            },
+            Ok(json) => json
+        }
+    };
+    return Ok(TranslationContext { key: ctx.key, token: resp.access_token, token_expiry: expiry });
 }
 
 // ------------------- Internal Stuff -------------------
@@ -186,63 +245,11 @@ async fn create_context(key_file: String) -> std::result::Result<TranslationCont
         Ok(k) => k
     };
 
-    let ctx = refresh_context(TranslationContext {key: key_file, token: "".to_string(), token_expiry: Utc.timestamp(0,0)}).await;
-    match ctx {
+    match refresh_context(TranslationContext {key: key_file, token: "".to_string(), token_expiry: Utc.timestamp(0,0)}).await {
         Err(_) => {
             println!("Failed to create context!");
             return Err(TranslationError::TokenCreationError);
         },
-        Ok(context) => return Ok(context)
+        Ok(ctx) => return Ok(ctx)
     }
-}
-
-async fn refresh_context(ctx: TranslationContext) -> Result<TranslationContext,TranslationError> {
-    if ctx.token_expiry > Utc::now(){
-        return Ok(ctx);
-    } 
-    let mut header = Header::new(Algorithm::RS256);
-    header.typ = Some("JWT".to_string());
-    let enc_key = match EncodingKey::from_rsa_pem(ctx.key.private_key.as_bytes()) {
-        Err(why) => {
-            println!("Failed to create JWT encoding key: {:?}",why);
-            return Err(TranslationError::KeyEncodingError);
-        },
-        Ok(key) => key
-    };
-    let expiry = Utc::now() + Duration::hours(1);
-    let claims = Claims {
-        iss: ctx.key.client_email.clone(),
-        scope: "https://www.googleapis.com/auth/cloud-translation".to_string(),
-        aud: "https://oauth2.googleapis.com/token".to_string(),
-        exp: expiry.timestamp(),
-        iat: Utc::now().timestamp()
-    };
-
-    let jwt = match encode(&header, &claims, &enc_key) {
-        Err(e) => {
-            println!("Failed to encode JWT: {:?}",e);
-            return Err(TranslationError::TokenRefreshError);
-        },
-        Ok(res) => res
-    };
-
-    let params = [("grant_type","urn:ietf:params:oauth:grant-type:jwt-bearer"),("assertion",&jwt)];
-    let client = reqwest::Client::new();
-    let resp = match client.post("https://oauth2.googleapis.com/token")
-        .form(&params)
-        .send()
-        .await  {
-        Err(why) => {
-            println!("Failed to get token from auth service: {:?}",why);
-            return Err(TranslationError::TokenRefreshError);
-        },
-        Ok(resp) => match resp.json::<TokenResult>().await {
-            Err(why) => {
-                println!("Failed to decode token result: {:?}",why);
-                return Err(TranslationError::TokenRefreshError);
-            },
-            Ok(json) => json
-        }
-    };
-    return Ok(TranslationContext{key: ctx.key, token: resp.access_token, token_expiry: expiry});
 }
