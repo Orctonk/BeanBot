@@ -10,7 +10,7 @@ use backend::currency::*;
 mod modules;
 use modules::currency::*;
 use modules::showmebeans::*;
-use modules::markov::*;
+use modules::beanverse::*;
 
 use serenity::{
     async_trait,
@@ -132,7 +132,7 @@ async fn main(){
         .help(&MY_HELP)
         .group(&CURRENCY_GROUP)
         .group(&SHOWMEBEANS_GROUP)
-        .group(&MARKOV_GROUP);
+        .group(&BEANVERSE_GROUP);
 
     let mut client = Client::builder(&token)
         .framework(framework)
