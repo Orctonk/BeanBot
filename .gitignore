@@ -15,3 +15,7 @@ token
 
 # Dont include db
 beans.db
+
+# IDE files
+.vs/
+.idea/

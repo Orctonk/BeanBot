@@ -16,10 +16,25 @@ use serenity::{
     async_trait,
     framework::{
         StandardFramework,
+        standard::Args,
+        standard::HelpOptions,
+        standard::CommandGroup,
+        standard::CommandResult,
         standard::Configuration,
+        standard::DispatchError,
+        standard::help_commands,
+        standard::macros::hook,
+        standard::macros::help,
     },
     http::Http,
-    model::{event::ResumedEvent, gateway::Ready, gateway::Activity},
+    model::{
+        event::ResumedEvent, 
+        id::UserId,
+        channel::Message, 
+        gateway::Ready, 
+        gateway::Activity,
+        application::TeamMember,
+    },
     prelude::*,
 };
 use markov::Chain;
@@ -41,6 +56,45 @@ impl EventHandler for CommandHandler{
     }
 }
 
+#[hook]
+async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) {
+    match error {
+        DispatchError::Ratelimited(info) => {
+            if info.is_first_try {
+                let _ = msg.channel_id.say(&ctx.http, &format!("Try this again in {} seconds.", info.as_secs())).await;
+            }
+        },
+        DispatchError::LackingPermissions(info) => {
+            let _ = msg.channel_id.say(&ctx.http, &format!("You are missing the following requirements {}", info)).await;
+        },
+        DispatchError::LackingRole => {
+            let _ = msg.channel_id.say(&ctx.http, &format!("You are missing the required role")).await;
+        },
+        DispatchError::OnlyForOwners => {
+            let _ = msg.channel_id.say(&ctx.http, &format!("This command is only available to bot owners")).await;
+        },
+        DispatchError::TooManyArguments{max,given} => {
+            let _ = msg.channel_id.say(&ctx.http, &format!("Too many arguments! {:?} max, {:?} given",max,given)).await;
+        },
+        DispatchError::NotEnoughArguments{min,given} => {
+            let _ = msg.channel_id.say(&ctx.http, &format!("Too few arguments! {:?} required, {:?} given",min,given)).await;
+        },
+        _ => ()
+    }
+}
+
+#[help]
+async fn my_help(
+    context: &Context,
+    msg: &Message,
+    args: Args,
+    help_options: &'static HelpOptions,
+    groups: &[&'static CommandGroup],
+    owners: HashSet<UserId>
+) -> CommandResult {
+    let _ = help_commands::with_embeds(context, msg, args, help_options, groups, owners).await;
+    Ok(())
+}
 #[tokio::main]
 async fn main(){
     let args: Vec<String> = env::args().collect();
@@ -55,7 +109,7 @@ async fn main(){
         Ok(info) => {
             let mut owners = HashSet::new();
             if let Some(team) = info.team {
-                owners.insert(team.owner_user_id);
+                owners.extend(team.members.iter().map(|m : &TeamMember| m.user.id));
             } else {
                 owners.insert(info.owner.id);
             }
@@ -68,11 +122,14 @@ async fn main(){
     };
 
     let framework = StandardFramework::new()
-    .configure(|c: &mut Configuration| c
-        .owners(owners)
-        .prefix("!")
-        .case_insensitivity(true)
-        .on_mention(Some(bot_id)))
+        .configure(|c: &mut Configuration| c
+            .owners(owners)
+            .prefix("!")
+            .case_insensitivity(true)
+            .on_mention(Some(bot_id))
+        )
+        .on_dispatch_error(dispatch_error)
+        .help(&MY_HELP)
         .group(&CURRENCY_GROUP)
         .group(&SHOWMEBEANS_GROUP)
         .group(&MARKOV_GROUP);
