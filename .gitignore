@@ -15,6 +15,9 @@ token
 google-api-token
 BeanBot*.json
 
+# Ignore settings file
+settings.ini
+
 # Dont include db
 beans.db
 

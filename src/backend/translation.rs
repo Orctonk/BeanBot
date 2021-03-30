@@ -93,8 +93,8 @@ pub enum TranslationError {
     DetectionError,
 }
 
-pub async fn create_context() -> std::result::Result<TranslationContext,TranslationError>{
-    let mut file = File::open("BeanBot-bf935a27b851.json").unwrap();
+pub async fn create_context(key_file: String) -> std::result::Result<TranslationContext,TranslationError>{
+    let mut file = File::open(key_file).unwrap();
     let mut data = String::new();
     let _ = file.read_to_string(&mut data).unwrap();
     let key_file: KeyFile = match serde_json::from_str(&data){

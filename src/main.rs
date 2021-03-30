@@ -2,7 +2,10 @@ use std::{
     collections::HashSet,
     env,
     panic,
+    io::Write
 };
+
+use ini::Ini;   
 
 mod backend;
 use backend::currency::*;
@@ -94,24 +97,40 @@ async fn my_help(
 }
 #[tokio::main]
 async fn main(){
-    match create_context().await {
-        Err(_) => println!("Failed to get token!"),
-        Ok(ctx) => {
-            match translate(&ctx, "Testing, One, two, one, two".to_string(), Some("sv".to_string()), None).await {
-                Err(_) => println!("Failed to translate!"),
-                Ok(res) => println!("Result: {:?}, Lang: {:?}", res.translatedText, res.detectedSourceLanguage)
-            };
-            match detect(&ctx, "Testing, One, two, one, two".to_string()).await {
-                Err(_) => println!("Failed to translate!"),
-                Ok(res) => println!("Result: {:?}, Reliable: {:?}, Conf: {:?}", res.language, res.isReliable, res.confidence)
-            };
-        }
+    let set_path = std::path::Path::new("settings.ini");
+    if !set_path.exists() {
+        let mut setfile = std::fs::File::create(set_path).unwrap();
+        let _ = setfile.write(b"discord_api_token=\n").unwrap();
+        let _ = setfile.write(b"google_token_file=none\n").unwrap();
+        panic!("No settings.ini file exists!\nCreating file...\nFill in settings.ini and relaunch the bot");
     }
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        panic!("Please provide a file containing the bot token");
-    } 
-    let token = std::fs::read_to_string(std::path::Path::new(&args[1])).expect("Failed to open token file");
+    let setfile = match Ini::load_from_file(set_path) {
+        Err(why) => panic!("Failed to load settings.ini! Error: {:?}", why),
+        Ok(loaded) => loaded
+    };
+
+    let _ = match setfile.general_section().get("google_token_file") {
+        None => println!("Google token file is not set in settings.ini, translation module is disabled"),
+        Some("none") => println!("Google token file is not set in settings.ini, translation module is disabled"),
+        Some(file) => match create_context(file.to_string()).await {
+            Err(_) => println!("Failed to get token!"),
+            Ok(ctx) => {
+                match translate(&ctx, "Testing, One, two, one, two".to_string(), Some("sv".to_string()), None).await {
+                    Err(_) => println!("Failed to translate!"),
+                    Ok(res) => println!("Result: {:?}, Lang: {:?}", res.translatedText, res.detectedSourceLanguage)
+                };
+                match detect(&ctx, "Testing, One, two, one, two".to_string()).await {
+                    Err(_) => println!("Failed to translate!"),
+                    Ok(res) => println!("Result: {:?}, Reliable: {:?}, Conf: {:?}", res.language, res.isReliable, res.confidence)
+                };
+            }
+        }
+    };
+    
+    let token = match setfile.general_section().get("discord_api_token") {
+        None => panic!("Discord API token is not set in settings.ini"),
+        Some(token) => token
+    };
 
     let http = Http::new_with_token(&token);
 
