@@ -2,7 +2,10 @@ use std::{
     collections::HashSet,
     env,
     panic,
+    io::Write
 };
+
+use ini::Ini;   
 
 mod backend;
 use backend::currency::*;
@@ -93,11 +96,21 @@ async fn my_help(
 }
 #[tokio::main]
 async fn main(){
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        panic!("Please provide a file containing the bot token");
-    } 
-    let token = std::fs::read_to_string(std::path::Path::new(&args[1])).expect("Failed to open token file");
+    let set_path = std::path::Path::new("settings.ini");
+    if !set_path.exists() {
+        let mut setfile = std::fs::File::create(set_path).unwrap();
+        let _ = setfile.write(b"discord_api_token=\n").unwrap();
+        panic!("No settings.ini file exists!\nCreating file...\nFill in settings.ini and relaunch the bot");
+    }
+    let setfile = match Ini::load_from_file(set_path) {
+        Err(why) => panic!("Failed to load settings.ini! Error: {:?}", why),
+        Ok(loaded) => loaded
+    };
+    
+    let token = match setfile.general_section().get("discord_api_token") {
+        None => panic!("Discord API token is not set in settings.ini"),
+        Some(token) => token
+    };
 
     let http = Http::new_with_token(&token);
 
