@@ -5,7 +5,12 @@ use std::{
     io::Write
 };
 
+struct SettingsKey;
 use ini::Ini;   
+impl TypeMapKey for SettingsKey {
+    type Value = Ini;
+}
+
 
 mod backend;
 use backend::currency::*;
@@ -14,6 +19,7 @@ use backend::translation::*;
 mod modules;
 use modules::currency::*;
 use modules::showmebeans::*;
+use modules::translation::*;
 
 use serenity::{
     async_trait,
@@ -46,7 +52,15 @@ struct CommandHandler;
 #[async_trait]
 impl EventHandler for CommandHandler{
     async fn ready(&self, ctx: Context, _data_about_bot: Ready){
+        let settings = {
+            let data = ctx.data.read().await;
+            match data.get::<SettingsKey>() {
+                None => panic!("How did the client even start without settings file?"),
+                Some(set) => set.clone()
+            }
+        };
         create_wallet_table();
+        initialize_translation(&ctx, &settings).await;
         ctx.set_activity(Activity::listening("Quilla - Beans Beans Beans")).await;
         println!("Hello! I am ready to dispatch beans!");
     }
@@ -108,24 +122,6 @@ async fn main(){
         Err(why) => panic!("Failed to load settings.ini! Error: {:?}", why),
         Ok(loaded) => loaded
     };
-
-    let _ = match setfile.general_section().get("google_token_file") {
-        None => println!("Google token file is not set in settings.ini, translation module is disabled"),
-        Some("none") => println!("Google token file is not set in settings.ini, translation module is disabled"),
-        Some(file) => match create_context(file.to_string()).await {
-            Err(_) => println!("Failed to get token!"),
-            Ok(ctx) => {
-                match translate(&ctx, "Testing, One, two, one, two".to_string(), Some("sv".to_string()), None).await {
-                    Err(_) => println!("Failed to translate!"),
-                    Ok(res) => println!("Result: {:?}, Lang: {:?}", res.translatedText, res.detectedSourceLanguage)
-                };
-                match detect(&ctx, "Testing, One, two, one, two".to_string()).await {
-                    Err(_) => println!("Failed to translate!"),
-                    Ok(res) => println!("Result: {:?}, Reliable: {:?}, Conf: {:?}", res.language, res.isReliable, res.confidence)
-                };
-            }
-        }
-    };
     
     let token = match setfile.general_section().get("discord_api_token") {
         None => panic!("Discord API token is not set in settings.ini"),
@@ -160,12 +156,15 @@ async fn main(){
         .on_dispatch_error(dispatch_error)
         .help(&MY_HELP)
         .group(&CURRENCY_GROUP)
-        .group(&SHOWMEBEANS_GROUP);
+        .group(&SHOWMEBEANS_GROUP)
+        .group(&TRANSLATION_GROUP);
 
     let mut client = Client::builder(&token)
         .framework(framework)
         .event_handler(CommandHandler)
         .await.expect("Error creating client");
+
+    client.data.write().await.insert::<SettingsKey>(setfile);
 
     if let Err(why) = client.start().await{
         println!("Client error encountered: {:?}", why);

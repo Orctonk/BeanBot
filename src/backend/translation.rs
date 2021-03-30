@@ -1,11 +1,122 @@
 use serde::*;
 use jsonwebtoken::*;
-use chrono::Utc;
-use chrono::TimeZone;
-use chrono::Duration;
-use chrono::DateTime;
+use chrono::{Utc, TimeZone, Duration, DateTime};
 use std::fs::File;
 use std::io::Read;
+use serenity::client::Context;
+use serenity::prelude::TypeMapKey;
+use ini::Ini;
+
+#[derive(Debug,Serialize,Deserialize,Clone)]
+#[allow(non_snake_case)]
+pub struct Translation {
+    pub translatedText: String,
+    pub detectedSourceLanguage: String
+}
+
+#[derive(Debug,Serialize,Deserialize,Clone)]
+#[allow(non_snake_case)]
+pub struct Detection {
+    pub language: String,
+    pub isReliable: bool,
+    pub confidence: f32
+}
+
+pub struct TranslationContextKey;
+
+pub struct TranslationContext {
+    key: KeyFile,
+    pub token: String,
+    pub token_expiry: DateTime<Utc>
+}
+
+pub enum TranslationError {
+    KeyLoadError,
+    KeyEncodingError,
+    TokenCreationError,
+    TokenRefreshError,
+    TranslationError,
+    DetectionError,
+}
+
+pub async fn initialize_translation(context: &Context, settings: &Ini){
+    match settings.general_section().get("google_token_file") {
+        None => println!("Google token file is not set in settings.ini, translation module is disabled"),
+        Some("none") => println!("Google token file is not set in settings.ini, translation module is disabled"),
+        Some(file) => match create_context(file.to_string()).await {
+            Err(_) => println!("Failed to get token!"),
+            Ok(ctx) => {
+                let mut data = context.data.write().await;
+                data.insert::<TranslationContextKey>(ctx);
+            }
+        }
+    };
+}
+
+pub async fn translate_text(ctx: &TranslationContext, text: String, target: Option<String>, source: Option<String>) -> std::result::Result<Translation,TranslationError> {
+    let request = RequestData {
+        q: text,
+        source: source,
+        target: match target { None => Some("en".to_string()), Some(lang) => Some(lang)},
+        format: Some("text".to_string())
+    };
+
+    let client = reqwest::Client::new();
+    let resp = match client.post("https://translation.googleapis.com/language/translate/v2")
+        .bearer_auth(&ctx.token)
+        .json(&request)
+        .send()
+        .await {
+        Err(why) => {
+            println!("Failed translate query, error: {:?}",why);
+            return Err(TranslationError::TranslationError);
+        },
+        Ok(content) => match content.json::<TranslationResultRaw>().await {
+            Err(why) => {
+                println!("Failed translate query, error: {:?}",why);
+                return Err(TranslationError::TranslationError);
+            },
+            Ok(text) => text
+        }
+    };
+
+    return Ok(resp.data.translations[0].clone());
+}
+
+pub async fn detect_text(ctx: &TranslationContext, text: String) -> std::result::Result<Detection,TranslationError> {
+    let request = RequestData {
+        q: text,
+        source: None,
+        target: None,
+        format: None
+    };
+
+    let client = reqwest::Client::new();
+    let resp = match client.post("https://translation.googleapis.com/language/translate/v2/detect")
+        .bearer_auth(&ctx.token)
+        .json(&request)
+        .send()
+        .await {
+        Err(why) => {
+            println!("Failed detect query, error: {:?}",why);
+            return Err(TranslationError::DetectionError);
+        },
+        Ok(content) => match content.json::<DetectionResultRaw>().await {
+            Err(why) => {
+                println!("Failed detect query, error: {:?}",why);
+                return Err(TranslationError::DetectionError);
+            },
+            Ok(text) => text
+        }
+    };
+    return Ok(resp.data.detections[0][0].clone());
+}
+
+// ------------------- Internal Stuff -------------------
+
+impl TypeMapKey for TranslationContextKey{
+    type Value = TranslationContext;
+}
 
 #[derive(Debug,Serialize,Deserialize)]
 struct Claims{
@@ -29,13 +140,6 @@ struct TokenResult {
     access_token: String
 }
 
-#[derive(Debug,Serialize,Deserialize,Clone)]
-#[allow(non_snake_case)]
-pub struct Translation {
-    pub translatedText: String,
-    pub detectedSourceLanguage: String
-}
-
 #[derive(Debug,Serialize,Deserialize)]
 struct TranslationDataRaw {
     translations: Vec<Translation>
@@ -44,14 +148,6 @@ struct TranslationDataRaw {
 #[derive(Debug,Serialize,Deserialize)]
 struct TranslationResultRaw {
     data: TranslationDataRaw
-}
-
-#[derive(Debug,Serialize,Deserialize,Clone)]
-#[allow(non_snake_case)]
-pub struct Detection {
-    pub language: String,
-    pub isReliable: bool,
-    pub confidence: f32
 }
 
 #[derive(Debug,Serialize,Deserialize)]
@@ -78,22 +174,7 @@ struct KeyFile{
     client_x509_cert_url: String
 }
 
-pub struct TranslationContext {
-    key: KeyFile,
-    pub token: String,
-    pub token_expiry: DateTime<Utc>
-}
-
-pub enum TranslationError {
-    KeyLoadError,
-    KeyEncodingError,
-    TokenCreationError,
-    TokenRefreshError,
-    TranslationError,
-    DetectionError,
-}
-
-pub async fn create_context(key_file: String) -> std::result::Result<TranslationContext,TranslationError>{
+async fn create_context(key_file: String) -> std::result::Result<TranslationContext,TranslationError>{
     let mut file = File::open(key_file).unwrap();
     let mut data = String::new();
     let _ = file.read_to_string(&mut data).unwrap();
@@ -115,7 +196,7 @@ pub async fn create_context(key_file: String) -> std::result::Result<Translation
     }
 }
 
-pub async fn refresh_context(ctx: TranslationContext) -> Result<TranslationContext,TranslationError> {
+async fn refresh_context(ctx: TranslationContext) -> Result<TranslationContext,TranslationError> {
     if ctx.token_expiry > Utc::now(){
         return Ok(ctx);
     } 
@@ -164,63 +245,4 @@ pub async fn refresh_context(ctx: TranslationContext) -> Result<TranslationConte
         }
     };
     return Ok(TranslationContext{key: ctx.key, token: resp.access_token, token_expiry: expiry});
-}
-
-pub async fn translate(ctx: &TranslationContext, text: String, target: Option<String>, source: Option<String>) -> std::result::Result<Translation,TranslationError> {
-    let request = RequestData {
-        q: text,
-        source: source,
-        target: match target { None => Some("en".to_string()), Some(lang) => Some(lang)},
-        format: Some("text".to_string())
-    };
-
-    let client = reqwest::Client::new();
-    let resp = match client.post("https://translation.googleapis.com/language/translate/v2")
-        .bearer_auth(&ctx.token)
-        .json(&request)
-        .send()
-        .await {
-        Err(why) => {
-            println!("Failed translate query, error: {:?}",why);
-            return Err(TranslationError::TranslationError);
-        },
-        Ok(content) => match content.json::<TranslationResultRaw>().await {
-            Err(why) => {
-                println!("Failed translate query, error: {:?}",why);
-                return Err(TranslationError::TranslationError);
-            },
-            Ok(text) => text
-        }
-    };
-
-    return Ok(resp.data.translations[0].clone());
-}
-
-pub async fn detect(ctx: &TranslationContext, text: String) -> std::result::Result<Detection,TranslationError> {
-    let request = RequestData {
-        q: text,
-        source: None,
-        target: None,
-        format: None
-    };
-
-    let client = reqwest::Client::new();
-    let resp = match client.post("https://translation.googleapis.com/language/translate/v2/detect")
-        .bearer_auth(&ctx.token)
-        .json(&request)
-        .send()
-        .await {
-        Err(why) => {
-            println!("Failed detect query, error: {:?}",why);
-            return Err(TranslationError::DetectionError);
-        },
-        Ok(content) => match content.json::<DetectionResultRaw>().await {
-            Err(why) => {
-                println!("Failed detect query, error: {:?}",why);
-                return Err(TranslationError::DetectionError);
-            },
-            Ok(text) => text
-        }
-    };
-    return Ok(resp.data.detections[0][0].clone());
 }
