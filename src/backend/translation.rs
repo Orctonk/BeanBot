@@ -1,6 +1,7 @@
 use serde::*;
 use jsonwebtoken::*;
 use chrono::Utc;
+use chrono::TimeZone;
 use chrono::Duration;
 use chrono::DateTime;
 use std::fs::File;
@@ -19,8 +20,8 @@ struct Claims{
 struct RequestData {
     q: String,
     source: Option<String>,
-    target: String,
-    format: String
+    target: Option<String>,
+    format: Option<String>
 }
 
 #[derive(Debug,Serialize,Deserialize)]
@@ -36,13 +37,31 @@ pub struct Translation {
 }
 
 #[derive(Debug,Serialize,Deserialize)]
-struct DataRaw {
+struct TranslationDataRaw {
     translations: Vec<Translation>
 }
 
 #[derive(Debug,Serialize,Deserialize)]
 struct TranslationResultRaw {
-    data: DataRaw
+    data: TranslationDataRaw
+}
+
+#[derive(Debug,Serialize,Deserialize,Clone)]
+#[allow(non_snake_case)]
+pub struct Detection {
+    pub language: String,
+    pub isReliable: bool,
+    pub confidence: f32
+}
+
+#[derive(Debug,Serialize,Deserialize)]
+struct DetectionDataRaw {
+    detections: Vec<Vec<Detection>>
+}
+
+#[derive(Debug,Serialize,Deserialize)]
+struct DetectionResultRaw {
+    data: DetectionDataRaw
 }
 
 #[derive(Debug,Serialize,Deserialize)]
@@ -59,19 +78,22 @@ struct KeyFile{
     client_x509_cert_url: String
 }
 
-pub struct Token {
+pub struct TranslationContext {
+    key: KeyFile,
     pub token: String,
-    pub valid_until: DateTime<Utc>
+    pub token_expiry: DateTime<Utc>
 }
 
 pub enum TranslationError {
     KeyLoadError,
     KeyEncodingError,
     TokenCreationError,
+    TokenRefreshError,
     TranslationError,
+    DetectionError,
 }
 
-pub async fn create_token() -> std::result::Result<Token,TranslationError>{
+pub async fn create_context() -> std::result::Result<TranslationContext,TranslationError>{
     let mut file = File::open("BeanBot-bf935a27b851.json").unwrap();
     let mut data = String::new();
     let _ = file.read_to_string(&mut data).unwrap();
@@ -83,9 +105,23 @@ pub async fn create_token() -> std::result::Result<Token,TranslationError>{
         Ok(k) => k
     };
 
+    let ctx = refresh_context(TranslationContext {key: key_file, token: "".to_string(), token_expiry: Utc.timestamp(0,0)}).await;
+    match ctx {
+        Err(_) => {
+            println!("Failed to create context!");
+            return Err(TranslationError::TokenCreationError);
+        },
+        Ok(context) => return Ok(context)
+    }
+}
+
+pub async fn refresh_context(ctx: TranslationContext) -> Result<TranslationContext,TranslationError> {
+    if ctx.token_expiry > Utc::now(){
+        return Ok(ctx);
+    } 
     let mut header = Header::new(Algorithm::RS256);
     header.typ = Some("JWT".to_string());
-    let enc_key = match EncodingKey::from_rsa_pem(key_file.private_key.as_bytes()) {
+    let enc_key = match EncodingKey::from_rsa_pem(ctx.key.private_key.as_bytes()) {
         Err(why) => {
             println!("Failed to create JWT encoding key: {:?}",why);
             return Err(TranslationError::KeyEncodingError);
@@ -94,7 +130,7 @@ pub async fn create_token() -> std::result::Result<Token,TranslationError>{
     };
     let expiry = Utc::now() + Duration::hours(1);
     let claims = Claims {
-        iss: key_file.client_email,
+        iss: ctx.key.client_email.clone(),
         scope: "https://www.googleapis.com/auth/cloud-translation".to_string(),
         aud: "https://oauth2.googleapis.com/token".to_string(),
         exp: expiry.timestamp(),
@@ -104,7 +140,7 @@ pub async fn create_token() -> std::result::Result<Token,TranslationError>{
     let jwt = match encode(&header, &claims, &enc_key) {
         Err(e) => {
             println!("Failed to encode JWT: {:?}",e);
-            return Err(TranslationError::TokenCreationError);
+            return Err(TranslationError::TokenRefreshError);
         },
         Ok(res) => res
     };
@@ -116,31 +152,31 @@ pub async fn create_token() -> std::result::Result<Token,TranslationError>{
         .send()
         .await  {
         Err(why) => {
-            println!("Error why: {:?}",why);
-            return Err(TranslationError::TokenCreationError);
+            println!("Failed to get token from auth service: {:?}",why);
+            return Err(TranslationError::TokenRefreshError);
         },
         Ok(resp) => match resp.json::<TokenResult>().await {
             Err(why) => {
-                println!("Error why: {:?}",why);
-                return Err(TranslationError::TokenCreationError);
+                println!("Failed to decode token result: {:?}",why);
+                return Err(TranslationError::TokenRefreshError);
             },
             Ok(json) => json
         }
     };
-    return Ok(Token {token: resp.access_token, valid_until: expiry});
+    return Ok(TranslationContext{key: ctx.key, token: resp.access_token, token_expiry: expiry});
 }
 
-pub async fn translate(text: String, token: Token, target: Option<String>, source: Option<String>) -> std::result::Result<Translation,TranslationError> {
+pub async fn translate(ctx: &TranslationContext, text: String, target: Option<String>, source: Option<String>) -> std::result::Result<Translation,TranslationError> {
     let request = RequestData {
         q: text,
         source: source,
-        target: match target { None => "en".to_string(), Some(lang) => lang},
-        format: "text".to_string()
+        target: match target { None => Some("en".to_string()), Some(lang) => Some(lang)},
+        format: Some("text".to_string())
     };
 
     let client = reqwest::Client::new();
     let resp = match client.post("https://translation.googleapis.com/language/translate/v2")
-        .bearer_auth(token.token)
+        .bearer_auth(&ctx.token)
         .json(&request)
         .send()
         .await {
@@ -158,4 +194,33 @@ pub async fn translate(text: String, token: Token, target: Option<String>, sourc
     };
 
     return Ok(resp.data.translations[0].clone());
+}
+
+pub async fn detect(ctx: &TranslationContext, text: String) -> std::result::Result<Detection,TranslationError> {
+    let request = RequestData {
+        q: text,
+        source: None,
+        target: None,
+        format: None
+    };
+
+    let client = reqwest::Client::new();
+    let resp = match client.post("https://translation.googleapis.com/language/translate/v2/detect")
+        .bearer_auth(&ctx.token)
+        .json(&request)
+        .send()
+        .await {
+        Err(why) => {
+            println!("Failed detect query, error: {:?}",why);
+            return Err(TranslationError::DetectionError);
+        },
+        Ok(content) => match content.json::<DetectionResultRaw>().await {
+            Err(why) => {
+                println!("Failed detect query, error: {:?}",why);
+                return Err(TranslationError::DetectionError);
+            },
+            Ok(text) => text
+        }
+    };
+    return Ok(resp.data.detections[0][0].clone());
 }

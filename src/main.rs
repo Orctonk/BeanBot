@@ -94,11 +94,17 @@ async fn my_help(
 }
 #[tokio::main]
 async fn main(){
-    match create_token().await {
+    match create_context().await {
         Err(_) => println!("Failed to get token!"),
-        Ok(token) => match translate("Testing, One, two, one, two".to_string(), token, Some("sv".to_string()), None).await {
-            Err(_) => println!("Failed to translate!"),
-            Ok(res) => println!("Result: {:?}, Lang: {:?}", res.translatedText, res.detectedSourceLanguage)
+        Ok(ctx) => {
+            match translate(&ctx, "Testing, One, two, one, two".to_string(), Some("sv".to_string()), None).await {
+                Err(_) => println!("Failed to translate!"),
+                Ok(res) => println!("Result: {:?}, Lang: {:?}", res.translatedText, res.detectedSourceLanguage)
+            };
+            match detect(&ctx, "Testing, One, two, one, two".to_string()).await {
+                Err(_) => println!("Failed to translate!"),
+                Ok(res) => println!("Result: {:?}, Reliable: {:?}, Conf: {:?}", res.language, res.isReliable, res.confidence)
+            };
         }
     }
     let args: Vec<String> = env::args().collect();
