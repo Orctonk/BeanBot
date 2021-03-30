@@ -18,3 +18,4 @@ beans.db
 
 # IDE files
 .vs/
+.idea/
