@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 0.2.0 *Sprout*
+* Added the translation module:
+    * **translate** translates the provided text to english or to a provided language from a source or detected language base on parameters.
+    * **detect** guesses the language of the provided text.
+    * Backend provides utilities for authorizing against Google's Translate API.
+* Added a settings ini to allow for easier expansion without having to pass multiple parameters to the bot.
+* Bug fixes in wallet module.
+
 ## Version 0.1.3 *Sprout*
 * Added some new commands in the currency module:
     * **eat** lets the user eat some beans.
