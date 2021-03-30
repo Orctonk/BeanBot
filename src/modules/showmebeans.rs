@@ -9,9 +9,14 @@ use serenity::framework::standard::{
 
 #[group]
 #[commands(showmebeans)]
+#[description = "A group with commands related to showing pictures of beans"]
+#[summary = "Show beans"]
 struct ShowMeBeans;
 
 #[command]
+#[description = "Shows a picture of beans"]
+#[usage = ""]
+#[example = ""]
 pub async fn showmebeans(ctx: &Context, msg: &Message) -> CommandResult {
     msg.channel_id.send_message(&ctx.http, |m| {
         m.embed(|e| {
@@ -21,7 +26,7 @@ pub async fn showmebeans(ctx: &Context, msg: &Message) -> CommandResult {
             //return e
             e
         })
-    }).await?;
+    }).await;
     //Return Ok Result
     Ok(())
 }
