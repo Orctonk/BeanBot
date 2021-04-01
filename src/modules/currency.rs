@@ -1,7 +1,7 @@
 use serenity::prelude::*;
 use serenity::model::prelude::*;
-use serenity::http::CacheHttp;
 use serenity::model::id::UserId; 
+use serenity::utils::Colour;
 use serenity::framework::standard::{
     CommandResult,
     Args,
@@ -22,7 +22,7 @@ const YEARLY_BEAN_AMOUNT: u32 = 50;
 #[prefix = "beans"]
 #[description = "A group with commands related to the bean currency"]
 #[summary = "Bean currency commands"]
-#[commands(gimme,showme,give,eat,daily,weekly,monthly,yearly,beanmaster)]
+#[commands(gimme,showme,give,eat,daily,weekly,monthly,yearly,beanmaster,beanboard)]
 #[default_command(showme)]
 struct Currency;
 
@@ -130,6 +130,7 @@ pub async fn daily(ctx: &Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[description = "Get your weekly bean allowance"]
+
 #[max_args(0)]
 pub async fn weekly(ctx: &Context, msg: &Message) -> CommandResult {
     let userid = msg.author.id.0;
@@ -203,4 +204,38 @@ pub async fn beanmaster(ctx: &Context, msg: &Message) -> CommandResult {
         Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
     };
     return Ok(());
+}
+
+#[command]
+#[description = "See the score board of beans!"]
+#[max_args(0)]
+pub async fn beanboard(ctx: &Context, msg: &Message) -> CommandResult {
+    //let phraces = vec!["The Bean Master is {:?}"];
+    let mut users = Vec::new();
+    let bean_scores = get_scores(); 
+    match bean_scores {
+        Ok(beans) =>{
+            for (bean, amount) in beans {
+                let user_id = UserId (bean);
+                let user = user_id.to_user(ctx).await;
+                match user {
+                    Ok(new) => users.push((new.name, amount, false)),
+                    Err(_) => {}
+                };
+            }
+            msg.channel_id.send_message(&ctx.http, |m| {
+                m.embed(|e| {
+                    e.title("***Bean Board!***");
+                    e.color(Colour(16750123));
+                    e.fields(users);
+                    e
+                })
+            }).await?;
+            return Ok(());
+        },
+        Err(_) => {
+            msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?;
+            return Ok(());
+        }
+    };
 }
