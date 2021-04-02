@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 0.2.1 *Sprout*
+* Added score board and leader of scoreboard.
+    * **beanmaster** prints the name of the user with the most beans.
+    * **beanboard** prints the top 10 bean bois.
+* Added functions in SQL currency module to fetch users. 
+
 ## Version 0.2.0 *Sprout*
 * Added the translation module:
     * **translate** translates the provided text to english or to a provided language from a source or detected language base on parameters.
