@@ -1,3 +1,4 @@
+#![type_length_limit="1073634"]
 use std::{
     collections::HashSet,
     panic,
