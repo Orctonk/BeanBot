@@ -173,7 +173,7 @@ pub fn claim_daily(user: u64, amount: u32) -> Result<(),CurrencyError> {
 pub fn claim_weekly(user: u64, amount: u32) -> Result<(),CurrencyError> {
     let mut conn = match open_connection() {
         Ok(connection) => connection,
-        Err(why) => db_err!("Failed to open wallet DB with error {:?}",why)
+        Err(why) => db_err!("Fi64ailed to open wallet DB with error {:?}",why)
     };
 
     let res: rusqlite::Result<DateTime<Utc>> = conn.query_row("SELECT weekly FROM Claims WHERE id=?1",params![user as i64], |r| r.get(0));
@@ -295,3 +295,46 @@ pub fn claim_yearly(user: u64, amount: u32) -> Result<(),CurrencyError> {
     }
     Ok(())
 }
+
+pub fn get_highest_balance() ->  Result<u64,CurrencyError> {
+    let conn = match open_connection() {
+        Ok(connection) => connection,
+        Err(why) => db_err!("Failed to open wallet DB with error {:?}",why)
+    };
+    let res : rusqlite::Result<i64> = conn.query_row("SELECT id FROM Wallet ORDER BY balance DESC LIMIT 1",params![], |row| row.get(0));
+    match res {
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(0),
+        Err(why) => db_err!("Failed to get balance with error {:?}",why),
+        Ok(id) => Ok(id as u64)
+    } 
+}
+
+pub fn get_scores() ->  Result<Vec<(u64, u32)>,CurrencyError> {
+    let conn = match open_connection() {
+        Ok(connection) => connection,
+        Err(why) => db_err!("Failed to open wallet DB with error {:?}",why)
+    };
+    let mut res = match conn.prepare("SELECT id,balance FROM Wallet ORDER BY balance DESC LIMIT 10"){
+        Err(why) => db_err!("Failed to get balance with error {:?}",why),
+        Ok(res) => res
+    };
+    let rows = res.query_map(NO_PARAMS,|row|Ok((row.get(0)?,row.get(1)?)));
+    match rows {
+        Err(why) => db_err!("Failed to get balance with error {:?}",why),
+        Ok(scores_mapped) => {          
+            let mut scores = Vec::new();
+            for score_result in scores_mapped {
+                match score_result{
+                    Err(_) => {},
+                    Ok(score_result_elem) => {
+                        let result_type : (i64, u32) = score_result_elem; 
+                        scores.push((result_type.0 as u64, result_type.1 as u32))
+                    }
+                };
+            };
+            Ok(scores)
+        }
+        
+    }
+}
+
