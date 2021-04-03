@@ -80,7 +80,7 @@ impl FromStr for TranslationOptions {
 #[group]
 #[description = "Various commands for translating and identifying the language of text"]
 #[summary = "Translation commands"]
-#[commands(detect,translate,detecthist,translatehist)]
+#[commands(detect,translate,languages,detecthist,translatehist)]
 struct Translation;
 
 #[command]
@@ -135,6 +135,38 @@ pub async fn detect(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     match detect_text(trans_ctx, vec![target.to_string()]).await {
         Err(_) => msg.channel_id.say(&ctx.http, TRANSLATION_ERROR_MESSAGE).await?,
         Ok(detection) => msg.channel_id.say(&ctx.http, &format!("I believe the language is `{}`!",detection[0].language)).await?
+    };
+    return Ok(());
+}
+
+#[command]
+#[description = "Displays the supported languages and their respective language codes"]
+#[max_args(0)]
+pub async fn languages(ctx: &Context, msg: &Message) -> CommandResult {
+    let mut data = ctx.data.write().await;
+    let trans_ctx = get_and_refresh_token!(data,msg,ctx);
+
+    match get_supported_languages(trans_ctx).await {
+        Err(_) => msg.channel_id.say(&ctx.http, TRANSLATION_ERROR_MESSAGE).await?,
+        Ok(langs) => {
+            msg.channel_id.send_message(ctx, |m : &mut serenity::builder::CreateMessage| {
+                m.embed(|e| {
+                    e.title("Supported Languages");
+                    let mut fields = vec![
+                        (String::from("-------------------------------"),String::new(),true),
+                        (String::from("-------------------------------"),String::new(),true),
+                        (String::from("-------------------------------"),String::new(),true)];
+                    for (i,lang) in langs.iter().enumerate() {
+                        fields[i % 3].1.push_str("\n");
+                        fields[i % 3].1.push_str(&format!("{}: {}",lang.name,lang.language));
+                    }
+                    e.fields(fields);
+                    e
+                });
+                m
+            }).await?;
+            return Ok(());
+        }
     };
     return Ok(());
 }

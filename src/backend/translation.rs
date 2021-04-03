@@ -22,6 +22,13 @@ pub struct Detection {
     pub confidence: f32
 }
 
+#[derive(Debug,Serialize,Deserialize,Clone)]
+#[allow(non_snake_case)]
+pub struct Language {
+    pub language: String,
+    pub name: String
+}
+
 pub struct TranslationContextKey;
 
 #[derive(Debug,Clone)]
@@ -39,6 +46,7 @@ pub enum TranslationError {
     TranslationError,
     DetectionError,
     ResponseError,
+    LanguageError
 }
 
 pub async fn initialize_translation(context: &Context, settings: &Ini){
@@ -125,6 +133,37 @@ pub async fn detect_text(ctx: &TranslationContext, text:    Vec<String>) -> std:
     return Ok(detected);
 }
 
+pub async fn get_supported_languages(ctx: &TranslationContext) -> std::result::Result<Vec<Language>,TranslationError> {
+    let request = LanguageRequestData {
+        target: "en".to_string()
+    };
+
+    let client = reqwest::Client::new();
+    let resp = match client.post("https://translation.googleapis.com/language/translate/v2/languages")
+        .bearer_auth(&ctx.token)
+        .json(&request)
+        .send()
+        .await {
+        Err(why) => {
+            println!("Failed detect query, error: {:?}",why);
+            return Err(TranslationError::LanguageError);
+        },
+        Ok(content) => if content.status().is_success() {
+            match content.json::<LanguageResultRaw>().await {
+                Err(why) => {
+                    println!("Failed detect query, error: {:?}",why);
+                    return Err(TranslationError::LanguageError);
+                },
+                Ok(text) => text
+            }
+        } else {
+            println!("Detection query did not return success, HTTP code: {:?}",content.status());
+            return Err(TranslationError::ResponseError);
+        }
+    };
+    return Ok(resp.data.languages);
+}
+
 pub async fn refresh_context(ctx: TranslationContext) -> Result<TranslationContext,TranslationError> {
     let mut header = Header::new(Algorithm::RS256);
     header.typ = Some("JWT".to_string());
@@ -188,12 +227,17 @@ struct Claims{
     iat: i64
 }
 
-#[derive(Debug,Serialize,Deserialize)]
+#[derive(Debug,Serialize)]
 struct RequestData {
     q: Vec<String>,
     source: Option<String>,
     target: Option<String>,
     format: Option<String>
+}
+
+#[derive(Debug,Serialize)]
+struct LanguageRequestData {
+    target: String
 }
 
 #[derive(Debug,Serialize,Deserialize)]
@@ -219,6 +263,16 @@ struct DetectionDataRaw {
 #[derive(Debug,Serialize,Deserialize)]
 struct DetectionResultRaw {
     data: DetectionDataRaw
+}
+
+#[derive(Debug,Serialize,Deserialize)]
+struct LanguageDataRaw {
+    languages: Vec<Language>
+}
+
+#[derive(Debug,Serialize,Deserialize)]
+struct LanguageResultRaw {
+    data: LanguageDataRaw
 }
 
 #[derive(Debug,Serialize,Deserialize,Clone)]
