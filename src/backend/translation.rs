@@ -55,7 +55,7 @@ pub async fn initialize_translation(context: &Context, settings: &Ini){
     };
 }
 
-pub async fn translate_text(ctx: &TranslationContext, text: String, target: Option<String>, source: Option<String>) -> std::result::Result<Translation,TranslationError> {
+pub async fn translate_text(ctx: &TranslationContext, text: Vec<String>, target: Option<String>, source: Option<String>) -> std::result::Result<Vec<Translation>,TranslationError> {
     let request = RequestData {
         q: text,
         source: source,
@@ -64,7 +64,7 @@ pub async fn translate_text(ctx: &TranslationContext, text: String, target: Opti
     };
 
     let client = reqwest::Client::new();
-    let resp = match client.post("https://translation.googleapis.com/language/translate/v2")
+    let resp: TranslationResultRaw = match client.post("https://translation.googleapis.com/language/translate/v2")
         .bearer_auth(&ctx.token)
         .json(&request)
         .send()
@@ -87,10 +87,10 @@ pub async fn translate_text(ctx: &TranslationContext, text: String, target: Opti
         }
     };
 
-    return Ok(resp.data.translations[0].clone());
+    return Ok(resp.data.translations);
 }
 
-pub async fn detect_text(ctx: &TranslationContext, text: String) -> std::result::Result<Detection,TranslationError> {
+pub async fn detect_text(ctx: &TranslationContext, text:    Vec<String>) -> std::result::Result<Vec<Detection>,TranslationError> {
     let request = RequestData {
         q: text,
         source: None,
@@ -121,7 +121,8 @@ pub async fn detect_text(ctx: &TranslationContext, text: String) -> std::result:
             return Err(TranslationError::ResponseError);
         }
     };
-    return Ok(resp.data.detections[0][0].clone());
+    let detected = resp.data.detections.iter().map(|d| d[0].clone()).collect();
+    return Ok(detected);
 }
 
 pub async fn refresh_context(ctx: TranslationContext) -> Result<TranslationContext,TranslationError> {
@@ -189,7 +190,7 @@ struct Claims{
 
 #[derive(Debug,Serialize,Deserialize)]
 struct RequestData {
-    q: String,
+    q: Vec<String>,
     source: Option<String>,
     target: Option<String>,
     format: Option<String>

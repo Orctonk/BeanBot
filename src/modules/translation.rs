@@ -6,6 +6,7 @@ use serenity::framework::standard::{
     macros::command,
     macros::group,
 };
+use serenity::futures::StreamExt;
 use std::str::FromStr;
 use regex::Regex;
 use chrono::Utc;
@@ -79,7 +80,7 @@ impl FromStr for TranslationOptions {
 #[group]
 #[description = "Various commands for translating and identifying the language of text"]
 #[summary = "Translation commands"]
-#[commands(detect,translate)]
+#[commands(detect,translate,detecthist,translatehist)]
 struct Translation;
 
 #[command]
@@ -103,13 +104,13 @@ pub async fn translate(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
         },
         Some(text) => text
     };
-    match translate_text(&trans_ctx, target.to_string(), Some(opts.target.clone()), opts.source.clone()).await {
+    match translate_text(&trans_ctx, vec![target.to_string()], Some(opts.target.clone()), opts.source.clone()).await {
         Err(TranslationError::ResponseError) => msg.channel_id.say(&ctx.http, "Invalid languages specified").await?,
         Err(_) => msg.channel_id.say(&ctx.http, TRANSLATION_ERROR_MESSAGE).await?,
-        Ok(trans) => msg.channel_id.say(&ctx.http, &format!("Translated from `{:?}` to `{:?}`:```{:?}```",
-            match opts.source { None => trans.detectedSourceLanguage.unwrap_or("Unknown".to_string()), Some(lang) => lang},
+        Ok(trans) => msg.channel_id.say(&ctx.http, &format!("Translated from `{}` to `{}`:```{}```",
+            match opts.source { None => trans[0].detectedSourceLanguage.clone().unwrap_or("Unknown".to_string()), Some(lang) => lang},
             opts.target,
-            trans.translatedText)
+            trans[0].translatedText)
         ).await?
     };
     return Ok(());
@@ -131,9 +132,154 @@ pub async fn detect(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         },
         Some(text) => text
     };
-    match detect_text(trans_ctx, target.to_string()).await {
+    match detect_text(trans_ctx, vec![target.to_string()]).await {
         Err(_) => msg.channel_id.say(&ctx.http, TRANSLATION_ERROR_MESSAGE).await?,
-        Ok(detection) => msg.channel_id.say(&ctx.http, &format!("I believe the language is `{:?}`!",detection.language)).await?
+        Ok(detection) => msg.channel_id.say(&ctx.http, &format!("I believe the language is `{}`!",detection[0].language)).await?
     };
     return Ok(());
+}
+
+#[command]
+#[description = "Detects the language of the specified messages"]
+#[usage = "start [count]"]
+#[example = "3 5"]
+#[min_args(1)]
+#[max_args(2)]
+pub async fn detecthist(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let mut data = ctx.data.write().await;
+    let trans_ctx = get_and_refresh_token!(data,msg,ctx);
+
+    let msgstart = match args.single::<u32>(){
+        Err(_) => {
+            msg.channel_id.say(&ctx.http, &format!("Please specify which messages to detect!")).await?;
+            return Ok(());
+        },
+        Ok(msgc) => msgc
+    };
+
+    let msgcount = match args.single::<usize>(){
+        Err(_) => 1,
+        Ok(msgc) => msgc
+    };
+
+    let mut messages = msg.channel_id.messages_iter(ctx).boxed();
+    for _ in 0..msgstart {
+        match messages.next().await{
+            None => {
+                msg.channel_id.say(&ctx.http, &format!("Not enough messages!")).await?;
+                return Ok(());
+            },
+            _ => {}
+        };
+    }
+    let mut msgvec: Vec<String> = Vec::new();
+    for _ in 0..msgcount {
+        match messages.next().await{
+            None => {
+                msg.channel_id.say(&ctx.http, &format!("Not enough messages!")).await?;
+                return Ok(());
+            },
+            Some(message) => msgvec.push(message?.content)
+        };
+    }
+
+    msgvec.reverse();
+
+    match detect_text(trans_ctx, msgvec.clone()).await {
+        Err(_) => {
+            msg.channel_id.say(&ctx.http, TRANSLATION_ERROR_MESSAGE).await?;
+            return Ok(());
+        },
+        Ok(detection) => {
+            msg.channel_id.send_message(ctx, |m : &mut serenity::builder::CreateMessage| {
+                m.embed(|e| {
+                    e.title("Detection");
+                    for i in 0..msgcount {
+                        e.field(&msgvec[i],&detection[i].language,false);
+                    }
+                    e
+                });
+                m
+            }).await?;
+            return Ok(());
+        }
+    };
+}
+
+#[command]
+#[description = "Translates the specified messages"]
+#[usage = "[([source]->target)] start [count]"]
+#[example = "(de->en) 3 5"]
+#[min_args(1)]
+#[max_args(3)]
+pub async fn translatehist(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let mut data = ctx.data.write().await;
+    let trans_ctx = get_and_refresh_token!(data,msg,ctx);
+
+    let opts = match args.single::<TranslationOptions>() {
+        Err(_) => TranslationOptions { source: None, target: "en".to_string()},
+        Ok(opt) => opt
+    };
+
+    let msgstart = match args.single::<u32>(){
+        Err(_) => {
+            msg.channel_id.say(&ctx.http, &format!("Please specify which messages to detect!")).await?;
+            return Ok(());
+        },
+        Ok(msgc) => msgc
+    };
+
+    let msgcount = match args.single::<usize>(){
+        Err(_) => 1,
+        Ok(msgc) => msgc
+    };
+
+    let mut messages = msg.channel_id.messages_iter(ctx).boxed();
+    for _ in 0..msgstart {
+        match messages.next().await{
+            None => {
+                msg.channel_id.say(&ctx.http, &format!("Not enough messages!")).await?;
+                return Ok(());
+            },
+            _ => {}
+        };
+    }
+    let mut msgvec: Vec<String> = Vec::new();
+    for _ in 0..msgcount {
+        match messages.next().await{
+            None => {
+                msg.channel_id.say(&ctx.http, &format!("Not enough messages!")).await?;
+                return Ok(());
+            },
+            Some(message) => msgvec.push(message?.content)
+        };
+    }
+
+    msgvec.reverse();
+
+    match translate_text(trans_ctx, msgvec.clone(), Some(opts.target.clone()), opts.source.clone()).await {
+        Err(_) => {
+            msg.channel_id.say(&ctx.http, TRANSLATION_ERROR_MESSAGE).await?;
+            return Ok(());
+        },
+        Ok(translation) => {
+            msg.channel_id.send_message(ctx, |m : &mut serenity::builder::CreateMessage| {
+                m.embed(|e| {
+                    e.title("Translation");
+                    for i in 0..msgcount {
+                        e.field(&msgvec[i],format!("({}->{}) {}",
+                            match &opts.source {
+                                None => translation[i].detectedSourceLanguage.clone().unwrap_or("Unknown".to_string()),
+                                Some(lang) => lang.clone()
+                            }.as_str(),
+                            opts.target.as_str(),
+                            &translation[i].translatedText),false);
+                    }
+                    e
+                });
+                m
+            }).await?;
+            return Ok(());
+        }
+    };
 }
