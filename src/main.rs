@@ -14,11 +14,13 @@ impl TypeMapKey for SettingsKey {
 mod backend;
 use backend::currency::*;
 use backend::translation::*;
+use backend::specialbeans::*;
 
 mod modules;
 use modules::currency::*;
 use modules::showmebeans::*;
 use modules::translation::*;
+use modules::specialbeans::*;
 
 use serenity::{
     async_trait,
@@ -58,6 +60,7 @@ impl EventHandler for CommandHandler{
                 Some(set) => set.clone()
             }
         };
+        create_spec_table();
         create_wallet_table();
         initialize_translation(&ctx, &settings).await;
         ctx.set_activity(Activity::listening("Quilla - Beans Beans Beans")).await;
@@ -156,7 +159,8 @@ async fn main(){
         .help(&MY_HELP)
         .group(&CURRENCY_GROUP)
         .group(&SHOWMEBEANS_GROUP)
-        .group(&TRANSLATION_GROUP);
+        .group(&TRANSLATION_GROUP)
+        .group(&SPECIALBEANS_GROUP);
 
     let mut client = Client::builder(&token)
         .framework(framework)
