@@ -6,6 +6,7 @@ use serenity::framework::standard::{
     macros::command,
     macros::group,
 };
+use rand::Rng;
 //WTF is a crate? 
 use crate::backend::currency::*;
 use crate::backend::specialbeans::*;
@@ -27,9 +28,11 @@ pub async fn buy(ctx: &Context, msg: &Message) -> CommandResult {
     match withdraw_beans(userid, JAR_COST)  {
         Err (_) => msg.channel_id.say(&ctx.http, &format!("You don't have enought cum... I mean BEANS")).await?,
         Ok(_) =>  {
-            match add_special_bean(userid, 2) {
+            let id = get_random_id();
+            let name =  add_special_bean(userid, id);
+            match name {
                 Err (_) => msg.channel_id.say(&ctx.http, &format!("Sorry, no beans for you!")).await?,
-                Ok(_) =>  msg.channel_id.say(&ctx.http, &format!("You bought a jar of beans!")).await?
+                Ok(bean) =>  msg.channel_id.say(&ctx.http, &format!("You bought a jar of beans and you got a `{:?}`!", bean)).await?
             }
         }
     };
@@ -49,6 +52,7 @@ pub async fn mybeans(ctx: &Context, msg: &Message) -> CommandResult {
                 m.embed(|e| {
                     e.title("***Your Beans:***");
                     e.color(Colour(16750123));
+                    e.thumbnail("https://cdn.pixabay.com/photo/2014/03/24/13/42/bean-294077_960_720.png");
                     e.fields(beans_mapped);
                     e
                 })
@@ -61,4 +65,22 @@ pub async fn mybeans(ctx: &Context, msg: &Message) -> CommandResult {
             return Ok(());
         }
     }
+}
+// Function for getting a random bean ID from database
+fn get_random_id() -> u32 {
+    let mut final_weighted = Vec::new();
+    let weighted_beans = get_all_beans();
+    match weighted_beans{
+        Ok(beans) => {
+            for (id, weight) in beans {
+                for i in 1..weight {
+                    final_weighted.push(id)
+                }
+            }
+        }
+        Err(_) =>  println!("Failed to get random bean id")
+    };
+    let index = rand::thread_rng().gen_range(0..(final_weighted.len()));
+
+    return final_weighted[index];
 }
