@@ -3,6 +3,7 @@ use serenity::utils::Colour;
 use serenity::model::prelude::*;
 use serenity::framework::standard::{
     CommandResult,
+    Args,
     macros::command,
     macros::group,
 };
@@ -15,7 +16,7 @@ use crate::backend::specialbeans::*;
 const JAR_COST: u32 = 10; 
 
 #[group]
-#[commands(buy, mybeans)]
+#[commands(buy, mybeans, about)]
 #[description = "Commands related to special beans"]
 #[summary = "Special Beans"]
 struct SpecialBeans;
@@ -52,7 +53,6 @@ pub async fn mybeans(ctx: &Context, msg: &Message) -> CommandResult {
                 m.embed(|e| {
                     e.title("***Your Beans:***");
                     e.color(Colour(16750123));
-                    e.thumbnail("https://cdn.pixabay.com/photo/2014/03/24/13/42/bean-294077_960_720.png");
                     e.fields(beans_mapped);
                     e
                 })
@@ -66,6 +66,35 @@ pub async fn mybeans(ctx: &Context, msg: &Message) -> CommandResult {
         }
     }
 }
+
+#[command]
+#[description = "Prints facts about a special bean"]
+#[min_args(0)]
+//#[max_args(1)]
+pub async fn about(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult{
+    let name  = args.remains().unwrap_or("");
+    let about_string = get_about_from_name(&name);
+    match about_string {
+        Err(_) => {
+            msg.channel_id.say(&ctx.http, &format!("Could not find information about `{:?}`",name)).await?;
+            return Ok(());
+        }
+        Ok(about) => {
+            msg.channel_id.send_message(&ctx.http, |m| {
+                m.embed(|e| {
+                    e.title(&format!("***About {:?}:***", name));
+                    e.color(Colour(16750123));
+                    e.thumbnail("https://cdn.pixabay.com/photo/2014/03/24/13/42/bean-294077_960_720.png");
+                    e.description(about);
+                    e
+                })
+            }).await?;
+            return Ok(());
+        }
+    };
+}
+
+
 // Function for getting a random bean ID from database
 fn get_random_id() -> u32 {
     let mut final_weighted = Vec::new();
@@ -81,6 +110,6 @@ fn get_random_id() -> u32 {
         Err(_) =>  println!("Failed to get random bean id")
     };
     let index = rand::thread_rng().gen_range(0..(final_weighted.len()));
-
     return final_weighted[index];
 }
+

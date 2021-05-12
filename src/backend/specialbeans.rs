@@ -37,6 +37,7 @@ pub fn create_spec_table() {
         "CREATE TABLE IF NOT EXISTS SpecBeans (
             id INTEGER PRIMARY KEY, 
             name STRING,
+            about STRING,
             weight INT
         );",NO_PARAMS);
     if let Err(why) = res{
@@ -57,19 +58,21 @@ pub fn create_spec_table() {
     //TEST DATA
     let res3 = conn.execute(
         "INSERT INTO SpecBeans 
-        VALUES (?1,?2,?3)", params![1,"Basic Bean", 8]);
+        VALUES (?1,?2,?3, ?4)", 
+        params![1,"Basic Bean", "I am a basic bean, I drink Star Bucks",8]);
     if let Err(why) = res3{
         println!("Failed to insert test data with error {:?}",why);
     } 
     let res4 = conn.execute(
         "INSERT INTO SpecBeans 
-        VALUES (?1,?2,?3)", params![2,"Better Bean", 1]);
+        VALUES (?1,?2,?3, ?4)", 
+        params![2,"Better Bean", "I am a rare bean, you should feel luckey to have me!", 1]);
     if let Err(why) = res4{
         println!("Failed to insert test data with error {:?}",why);
     } 
     let res5 = conn.execute(
         "INSERT INTO SpecBeans 
-        VALUES (?1,?2,?3)", params![3,"Stinky Bean", 7]);
+        VALUES (?1,?2,?3, ?4)", params![3,"Stinky","I am a stinky, stinky bean", 7]);
     if let Err(why) = res5{
         println!("Failed to insert test data with error {:?}",why);
     } 
@@ -167,4 +170,20 @@ pub fn get_all_beans() -> Result<Vec<(u32,u32)>,SpecialBeansError> {
             Ok(beans)
         }
     }
+}
+
+//Function to get about collumn from the name of a bean
+pub fn get_about_from_name(name: &str) -> Result<String,SpecialBeansError>{
+    let conn = match open_connection() {
+        Ok(connection) => connection,
+        Err(why) => db_err!("Failed to open bean DB with error {:?}",why)
+    };
+    let res = match conn.query_row("
+    SELECT about 
+    FROM SpecBeans
+    WHERE name = ?1", params![name], |row| row.get(0)){
+        Err(why) => db_err!("Failed to get description about bean with error {:?}",why),
+        Ok(res) => res
+    };
+    Ok(res)
 }
