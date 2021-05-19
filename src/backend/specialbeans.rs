@@ -2,9 +2,6 @@
 use rusqlite::{params, Connection};
 use rusqlite::NO_PARAMS;
 
-use chrono::prelude::*;
-use chrono::Duration;
-
 pub enum SpecialBeansError {
     InternalDatabaseError
 }
@@ -38,6 +35,7 @@ pub fn create_spec_table() {
             id INTEGER PRIMARY KEY, 
             name STRING,
             about STRING,
+            image STRING,
             weight INT
         );",NO_PARAMS);
     if let Err(why) = res{
@@ -55,29 +53,26 @@ pub fn create_spec_table() {
     if let Err(why) = res2{
         println!("Failed to create 'have beans' table with error {:?}",why);
     } 
-    //TEST DATA
-    let res3 = conn.execute(
-        "INSERT INTO SpecBeans 
-        VALUES (?1,?2,?3, ?4)", 
-        params![1,"Basic Bean", "I am a basic bean, I drink Star Bucks",8]);
-    if let Err(why) = res3{
-        println!("Failed to insert test data with error {:?}",why);
-    } 
-    let res4 = conn.execute(
-        "INSERT INTO SpecBeans 
-        VALUES (?1,?2,?3, ?4)", 
-        params![2,"Better Bean", "I am a rare bean, you should feel luckey to have me!", 1]);
-    if let Err(why) = res4{
-        println!("Failed to insert test data with error {:?}",why);
-    } 
-    let res5 = conn.execute(
-        "INSERT INTO SpecBeans 
-        VALUES (?1,?2,?3, ?4)", params![3,"Stinky","I am a stinky, stinky bean", 7]);
-    if let Err(why) = res5{
-        println!("Failed to insert test data with error {:?}",why);
-    } 
-    // REMEMBER TO REMOVE TEST DATA
+    bean_insert();
+    
     println!("Specialbeans module is using SQL version {:?}", rusqlite::version());
+}
+
+// Function for creating a new special bean. 
+pub fn create_special_bean(id: u32, name: &str, about: &str, image_url: &str, weight: u32) -> Result<(),SpecialBeansError> {
+    let conn = match open_connection() {
+        Ok(connection) => connection,
+        Err(why) => db_err!("Failed to open bean DB with error {:?}",why)
+    };
+   
+    let res = conn.execute(
+        "INSERT INTO SpecBeans 
+        VALUES (?1,?2,?3, ?4,?5)", 
+        params![id, name, about, image_url, weight]);
+    if let Err(why) = res{
+        println!("Failed to insert test data with error {:?}",why);
+    }
+    Ok(())
 }
 
 // Add bean to user and return the name of the bean.
@@ -173,17 +168,59 @@ pub fn get_all_beans() -> Result<Vec<(u32,u32)>,SpecialBeansError> {
 }
 
 //Function to get about collumn from the name of a bean
-pub fn get_about_from_name(name: &str) -> Result<String,SpecialBeansError>{
+pub fn get_info_from_name(name: &str) -> Result<(String,String),SpecialBeansError>{
     let conn = match open_connection() {
         Ok(connection) => connection,
         Err(why) => db_err!("Failed to open bean DB with error {:?}",why)
     };
-    let res = match conn.query_row("
-    SELECT about 
+    let res : rusqlite::Result<(String,String)> = conn.query_row("
+    SELECT about,image
     FROM SpecBeans
-    WHERE name = ?1", params![name], |row| row.get(0)){
+    WHERE name = ?1", params![name],|row| Ok((row.get(0)?,row.get(1)?)));
+    match res {
         Err(why) => db_err!("Failed to get description about bean with error {:?}",why),
-        Ok(res) => res
-    };
-    Ok(res)
+        Ok(res) => Ok(res)
+    }
+}
+
+
+pub fn bean_insert() {
+
+    let mut res = create_special_bean(
+        1,
+        "Basic Bean",
+        "Hello! I am a basic bean. How do you do?",
+        "https://cdn.discordapp.com/attachments/594624834714206216/842111748618321930/basic_bean.png",
+        10);
+    
+    res = create_special_bean(
+        2,
+        "Cool Bean",
+        "I am a cooool bean.",
+        "https://beanscape.dev/beans/better_bean.png",
+        5);
+    res = create_special_bean(
+        3,
+        "Bumblebean",
+        "Bzzzzzzzz!",
+        "https://cdn.discordapp.com/attachments/594624834714206216/842467339029970974/bumblebean.png",
+        3);
+    res = create_special_bean(
+        4,
+        "Furbean",
+        "The power of CHRIST flows through me.",
+        "https://cdn.discordapp.com/attachments/594624834714206216/842781409810317373/furbean.png",
+        1);
+    res = create_special_bean(
+        5,
+        "Stinky",
+        "Bzzzzzzzz!",
+        "https://cdn.discordapp.com/attachments/594624834714206216/842467339029970974/bumblebean.png",
+        3);
+    res = create_special_bean(
+        6,
+        "The Beantles",
+        "Well she was just 17, if you know what I bean!",
+        "https://cdn.discordapp.com/attachments/594624834714206216/842474994244124722/Beantles.png",
+        1);
 }

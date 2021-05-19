@@ -70,21 +70,20 @@ pub async fn mybeans(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[description = "Prints facts about a special bean"]
 #[min_args(0)]
-//#[max_args(1)]
-pub async fn about(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult{
+pub async fn about(ctx: &Context, msg: &Message, args: Args) -> CommandResult{
     let name  = args.remains().unwrap_or("");
-    let about_string = get_about_from_name(&name);
-    match about_string {
+    let info = get_info_from_name(&name);
+    match info {
         Err(_) => {
             msg.channel_id.say(&ctx.http, &format!("Could not find information about `{:?}`",name)).await?;
             return Ok(());
         }
-        Ok(about) => {
+        Ok((about, image)) => {
             msg.channel_id.send_message(&ctx.http, |m| {
                 m.embed(|e| {
                     e.title(&format!("***About {:?}:***", name));
                     e.color(Colour(16750123));
-                    e.thumbnail("https://cdn.pixabay.com/photo/2014/03/24/13/42/bean-294077_960_720.png");
+                    e.thumbnail(image);
                     e.description(about);
                     e
                 })
@@ -93,7 +92,6 @@ pub async fn about(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
         }
     };
 }
-
 
 // Function for getting a random bean ID from database
 fn get_random_id() -> u32 {
