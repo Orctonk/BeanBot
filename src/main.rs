@@ -19,6 +19,7 @@ mod modules;
 use modules::currency::*;
 use modules::showmebeans::*;
 use modules::translation::*;
+use modules::magicbean::*;
 
 use serenity::{
     async_trait,
@@ -156,7 +157,8 @@ async fn main(){
         .help(&MY_HELP)
         .group(&CURRENCY_GROUP)
         .group(&SHOWMEBEANS_GROUP)
-        .group(&TRANSLATION_GROUP);
+        .group(&TRANSLATION_GROUP)
+        .group(&MAGICBEAN_GROUP);
 
     let mut client = Client::builder(&token)
         .framework(framework)
