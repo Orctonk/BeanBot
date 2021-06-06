@@ -175,7 +175,7 @@ pub fn get_info_from_name(name: &str) -> Result<(String,String),SpecialBeansErro
     let res : rusqlite::Result<(String,String)> = conn.query_row("
     SELECT about,image
     FROM SpecBeans
-    WHERE name = ?1", params![name],|row| Ok((row.get(0)?,row.get(1)?)));
+    WHERE UPPER(name) = UPPER(?1)", params![name],|row| Ok((row.get(0)?,row.get(1)?)));
     match res {
         Err(why) => db_err!("Failed to get description about bean with error {:?}",why),
         Ok(res) => Ok(res)
