@@ -18,6 +18,9 @@ BeanBot*.json
 # Ignore settings file
 settings.ini
 
+# Ignore env files
+.env
+
 # Dont include db
 beans.db
 
