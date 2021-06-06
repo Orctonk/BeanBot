@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 0.3.0 *Sprout*
+* Added special beans which can be acquired from bean jars which can be bought for beans
+    * The user can use the **mybeans** command to see their special beans and the **about** command to see information about one of the beans.
+    * Added the base for an admin page for the special beans images used
+* Now uses [rust-clippy](https://github.com/rust-lang/rust-clippy) to lint the rust source
+
 ## Version 0.2.1 *Sprout*
 * Added score board and leader of scoreboard.
     * **beanmaster** prints the name of the user with the most beans.
