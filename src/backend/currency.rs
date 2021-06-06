@@ -317,7 +317,7 @@ pub fn get_scores() ->  Result<Vec<(u64, u32)>,CurrencyError> {
         Err(why) => db_err!("Failed to get balance with error {:?}",why),
         Ok(res) => res
     };
-    let rows = res.query_map(NO_PARAMS,|row|Ok((row.get(0)?,row.get(1)?)));
+    let rows = res.query_map([],|row|Ok((row.get(0)?,row.get(1)?)));
     match rows {
         Err(why) => db_err!("Failed to get balance with error {:?}",why),
         Ok(scores_mapped) => {          

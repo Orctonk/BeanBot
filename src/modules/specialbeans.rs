@@ -37,7 +37,7 @@ pub async fn buy(ctx: &Context, msg: &Message) -> CommandResult {
             }
         }
     };
-    return Ok(());
+    Ok(())
 }
 
 #[command]
@@ -57,12 +57,12 @@ pub async fn mybeans(ctx: &Context, msg: &Message) -> CommandResult {
                     e
                 })
             }).await?;
-            return Ok(());
+            Ok(())
             
         }
         Err(_) => {
             msg.channel_id.say(&ctx.http, "Could not find your beans :(").await?;
-            return Ok(());
+            Ok(())
         }
     }
 }
@@ -76,7 +76,7 @@ pub async fn about(ctx: &Context, msg: &Message, args: Args) -> CommandResult{
     match info {
         Err(_) => {
             msg.channel_id.say(&ctx.http, &format!("Could not find information about `{:?}`",name)).await?;
-            return Ok(());
+            Ok(())
         }
         Ok((about, image)) => {
             msg.channel_id.send_message(&ctx.http, |m| {
@@ -88,9 +88,9 @@ pub async fn about(ctx: &Context, msg: &Message, args: Args) -> CommandResult{
                     e
                 })
             }).await?;
-            return Ok(());
+            Ok(())
         }
-    };
+    }
 }
 
 // Function for getting a random bean ID from database
@@ -100,7 +100,7 @@ fn get_random_id() -> u32 {
     match weighted_beans{
         Ok(beans) => {
             for (id, weight) in beans {
-                for i in 1..weight {
+                for _ in 1..weight {
                     final_weighted.push(id)
                 }
             }

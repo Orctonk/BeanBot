@@ -1,6 +1,5 @@
 // Special Beans Database 
 use rusqlite::{params, Connection};
-use rusqlite::NO_PARAMS;
 
 pub enum SpecialBeansError {
     InternalDatabaseError
@@ -11,13 +10,13 @@ macro_rules! db_err {
     ($fmt:tt, $reason:tt) => {
         {
             println!($fmt,$reason);
-            return Err(SpecialBeansError::InternalDatabaseError)?;
+            return Err(SpecialBeansError::InternalDatabaseError);
         }
     };
 }
 
 fn open_connection() -> rusqlite::Result<Connection> {
-    return Connection::open("beans.db");
+    Connection::open("beans.db")
 }
 
 // Create 2 tables in the database.
@@ -37,7 +36,7 @@ pub fn create_spec_table() {
             about STRING,
             image STRING,
             weight INT
-        );",NO_PARAMS);
+        );",[]);
     if let Err(why) = res{
         println!("Failed to create 'special beans' table with error {:?}",why);
     } 
@@ -49,7 +48,7 @@ pub fn create_spec_table() {
             bean_id INTEGER,
             FOREIGN KEY (bean_id) REFERENCES SpecBeans (id),
             PRIMARY KEY (bean_id, user_id) 
-        );",NO_PARAMS);
+        );",[]);
     if let Err(why) = res2{
         println!("Failed to create 'have beans' table with error {:?}",why);
     } 
@@ -148,7 +147,7 @@ pub fn get_all_beans() -> Result<Vec<(u32,u32)>,SpecialBeansError> {
         Err(why) => db_err!("Failed to get beans with error {:?}",why),
         Ok(res) => res
     };
-    let rows = res.query_map(NO_PARAMS ,|row|Ok((row.get(0)?,row.get(1)?)));
+    let rows = res.query_map([] ,|row|Ok((row.get(0)?,row.get(1)?)));
     match rows {
         Err(why) => db_err!("Failed to get beans with error {:?}",why),
         Ok(beans_mapped) => {          
@@ -186,41 +185,63 @@ pub fn get_info_from_name(name: &str) -> Result<(String,String),SpecialBeansErro
 
 pub fn bean_insert() {
 
-    let mut res = create_special_bean(
+    if create_special_bean(
         1,
         "Basic Bean",
         "Hello! I am a basic bean. How do you do?",
         "https://cdn.discordapp.com/attachments/594624834714206216/842111748618321930/basic_bean.png",
-        10);
+        10
+    ).is_err() {
+        println!("Failed to create Basic Bean!");
+    }
     
-    res = create_special_bean(
+    if create_special_bean(
         2,
         "Cool Bean",
         "I am a cooool bean.",
         "https://beanscape.dev/beans/better_bean.png",
-        5);
-    res = create_special_bean(
+        5
+    ).is_err() {
+        println!("Failed to create Cool Bean!");
+    }
+
+    if create_special_bean(
         3,
         "Bumblebean",
         "Bzzzzzzzz!",
         "https://cdn.discordapp.com/attachments/594624834714206216/842467339029970974/bumblebean.png",
-        3);
-    res = create_special_bean(
+        3
+    ).is_err() {
+        println!("Failed to create Bumblebean!");
+    }
+
+    if create_special_bean(
         4,
         "Furbean",
         "The power of CHRIST flows through me.",
         "https://cdn.discordapp.com/attachments/594624834714206216/842781409810317373/furbean.png",
-        1);
-    res = create_special_bean(
+        1
+    ).is_err() {
+        println!("Failed to create Furbean!");
+    }
+
+    if create_special_bean(
         5,
         "Stinky",
-        "Bzzzzzzzz!",
-        "https://cdn.discordapp.com/attachments/594624834714206216/842467339029970974/bumblebean.png",
-        3);
-    res = create_special_bean(
+        "Im a stinky, stinky, bean.",
+        "https://cdn.discordapp.com/attachments/594624834714206216/842111756264669214/Stinky.png",
+        3
+    ).is_err() {
+        println!("Failed to create Stinky!");
+    }
+
+    if create_special_bean(
         6,
         "The Beantles",
         "Well she was just 17, if you know what I bean!",
         "https://cdn.discordapp.com/attachments/594624834714206216/842474994244124722/Beantles.png",
-        1);
+        1
+    ).is_err() {
+        println!("Failed to create The Beantles!");
+    }
 }
