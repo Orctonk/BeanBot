@@ -46,7 +46,7 @@ pub async fn initialize_translation(context: &Context, settings: &Ini){
         None => println!("Google token file is not set in settings.ini, translation module is disabled"),
         Some("none") => println!("Google token file is not set in settings.ini, translation module is disabled"),
         Some(file) => match create_context(file.to_string()).await {
-            Err(_) => println!("Failed to get token!"),
+            Err(_) => println!("Failed to get token! Translation module is disabled"),
             Ok(ctx) => {
                 let mut data = context.data.write().await;
                 data.insert::<TranslationContextKey>(ctx);
@@ -58,7 +58,7 @@ pub async fn initialize_translation(context: &Context, settings: &Ini){
 pub async fn translate_text(ctx: &TranslationContext, text: String, target: Option<String>, source: Option<String>) -> std::result::Result<Translation,TranslationError> {
     let request = RequestData {
         q: text,
-        source: source,
+        source,
         target: match target { None => Some("en".to_string()), Some(lang) => Some(lang)},
         format: Some("text".to_string())
     };
@@ -235,9 +235,18 @@ struct KeyFile{
 }
 
 async fn create_context(key_file: String) -> std::result::Result<TranslationContext,TranslationError>{
-    let mut file = File::open(key_file).unwrap();
+    let mut file = match File::open(key_file) {
+        Err(why) => {
+            println!("Failed to open key file, error: {:?}",why);
+            return Err(TranslationError::KeyLoadError);
+        },
+        Ok(f) => f
+    };
     let mut data = String::new();
-    let _ = file.read_to_string(&mut data).unwrap();
+    if let Err(why) = file.read_to_string(&mut data){
+        println!("Failed to open key file, error: {:?}",why);
+        return Err(TranslationError::KeyLoadError);
+    }
     let key_file: KeyFile = match serde_json::from_str(&data){
         Err(why) => {
             println!("Failed to open key file, error: {:?}",why);

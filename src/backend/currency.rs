@@ -1,5 +1,4 @@
 use rusqlite::{params, Connection};
-use rusqlite::NO_PARAMS;
 
 use chrono::prelude::*;
 use chrono::Duration;
@@ -14,13 +13,13 @@ macro_rules! db_err {
     ($fmt:tt, $reason:tt) => {
         {
             println!($fmt,$reason);
-            return Err(CurrencyError::InternalDatabaseError)?;
+            return Err(CurrencyError::InternalDatabaseError);
         }
     };
 }
 
 fn open_connection() -> rusqlite::Result<Connection> {
-    return Connection::open("beans.db");
+    Connection::open("beans.db")
 }
 
 pub fn create_wallet_table() {
@@ -35,7 +34,7 @@ pub fn create_wallet_table() {
         "CREATE TABLE IF NOT EXISTS Wallet (
             id INTEGER PRIMARY KEY,
             balance INTEGER
-        )",NO_PARAMS);
+        )",[]);
     if let Err(why) = res{
         println!("Failed to create wallet table with error {:?}",why);
     } 
@@ -47,7 +46,7 @@ pub fn create_wallet_table() {
             weekly DATETIME,
             monthly DATETIME,
             yearly DATETIME
-        )",NO_PARAMS);
+        )",[]);
     if let Err(why) = res2{
         println!("Failed to create wallet table with error {:?}",why);
     } 
@@ -79,9 +78,9 @@ pub fn withdraw_beans(user: u64, beans: u32) -> Result<(),CurrencyError> {
     );
     match res {
         Err(why) => db_err!("Failed to add beans to user with exception {:?}", why),
-        Ok(0) => return Err(CurrencyError::InsufficientBalance),
-        _ => return Ok(())
-    };
+        Ok(0) => Err(CurrencyError::InsufficientBalance),
+        _ => Ok(())
+    }
 }
 
 pub fn get_bean_balance(user: u64) -> Result<u32,CurrencyError> {

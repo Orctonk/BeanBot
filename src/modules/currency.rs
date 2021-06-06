@@ -35,10 +35,7 @@ struct Currency;
 #[max_args(1)]
 pub async fn gimme(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let userid = msg.author.id.0;
-    let amount = match args.single::<u32>() {
-        Err(_) => 5,
-        Ok(am) => am
-    };
+    let amount = args.single::<u32>().unwrap_or(5);
     let _ = match add_beans(userid, amount) {
         Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?,
         Ok(()) => msg.channel_id.say(&ctx.http, &format!("Here, have `{:?}` beans!",amount)).await?
@@ -96,7 +93,7 @@ pub async fn eat(ctx: &Context, msg: &Message) -> CommandResult {
         Ok(amount) => amount
     };
     let upper = std::cmp::min(max, 10);
-    if upper <= 0{
+    if upper == 0 {
         msg.channel_id.say(&ctx.http, "You don't have any beans to eat!").await?;
         return Ok(());
     }
@@ -125,7 +122,7 @@ pub async fn daily(ctx: &Context, msg: &Message) -> CommandResult {
         Ok(_) => msg.channel_id.say(&ctx.http, &format!("You've claimed your daily `{:?}` beans",DAILY_BEAN_AMOUNT)).await?,
         Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
     };
-    return Ok(());
+    Ok(())
 }
 
 #[command]
@@ -145,7 +142,7 @@ pub async fn weekly(ctx: &Context, msg: &Message) -> CommandResult {
         Ok(_) => msg.channel_id.say(&ctx.http, &format!("You've claimed your weekly `{:?}` beans",WEEKLY_BEAN_AMOUNT)).await?,
         Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
     };
-    return Ok(());
+    Ok(())
 }
 
 #[command]
@@ -164,7 +161,7 @@ pub async fn monthly(ctx: &Context, msg: &Message) -> CommandResult {
         Ok(_) => msg.channel_id.say(&ctx.http, &format!("You've claimed your monthly `{:?}` beans",MONTHLY_BEAN_AMOUNT)).await?,
         Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
     };
-    return Ok(());
+    Ok(())
 }
 
 #[command]
@@ -183,8 +180,9 @@ pub async fn yearly(ctx: &Context, msg: &Message) -> CommandResult {
         Ok(_) => msg.channel_id.say(&ctx.http, &format!("You've claimed your yearly `{:?}` beans",YEARLY_BEAN_AMOUNT)).await?,
         Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
     };
-    return Ok(());
+    Ok(())
 }
+
 #[command]
 #[description = "Call upon the Bean Master, the Master of the Beans, the boi with the most beans."]
 #[max_args(0)]
@@ -203,7 +201,7 @@ pub async fn beanmaster(ctx: &Context, msg: &Message) -> CommandResult {
 
         Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
     };
-    return Ok(());
+    Ok(())
 }
 
 #[command]
@@ -231,11 +229,11 @@ pub async fn beanboard(ctx: &Context, msg: &Message) -> CommandResult {
                     e
                 })
             }).await?;
-            return Ok(());
+            Ok(())
         },
         Err(_) => {
             msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?;
-            return Ok(());
+            Ok(())
         }
-    };
+    }
 }

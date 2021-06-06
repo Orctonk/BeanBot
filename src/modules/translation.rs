@@ -72,7 +72,7 @@ impl FromStr for TranslationOptions {
                 Some(mat) => mat.as_str().to_string()
             }
         };
-        return Ok(opt);
+        Ok(opt)
     }
 }
 
@@ -98,7 +98,7 @@ pub async fn translate(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
 
     let target = match args.remains() {
         None => {
-            msg.channel_id.say(&ctx.http, &format!("No text provided")).await?;
+            msg.channel_id.say(&ctx.http, "No text provided").await?;
             return Ok(());
         },
         Some(text) => text
@@ -107,12 +107,12 @@ pub async fn translate(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
         Err(TranslationError::ResponseError) => msg.channel_id.say(&ctx.http, "Invalid languages specified").await?,
         Err(_) => msg.channel_id.say(&ctx.http, TRANSLATION_ERROR_MESSAGE).await?,
         Ok(trans) => msg.channel_id.say(&ctx.http, &format!("Translated from `{:?}` to `{:?}`:```{:?}```",
-            match opts.source { None => trans.detectedSourceLanguage.unwrap_or("Unknown".to_string()), Some(lang) => lang},
+            match opts.source { None => trans.detectedSourceLanguage.unwrap_or_else(|| "Unknown".to_string()), Some(lang) => lang},
             opts.target,
             trans.translatedText)
         ).await?
     };
-    return Ok(());
+    Ok(())
 }
 
 #[command]
@@ -126,7 +126,7 @@ pub async fn detect(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
     let target = match args.remains() {
         None => {
-            msg.channel_id.say(&ctx.http, &format!("No text provided")).await?;
+            msg.channel_id.say(&ctx.http, "No text provided").await?;
             return Ok(());
         },
         Some(text) => text
@@ -135,5 +135,5 @@ pub async fn detect(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         Err(_) => msg.channel_id.say(&ctx.http, TRANSLATION_ERROR_MESSAGE).await?,
         Ok(detection) => msg.channel_id.say(&ctx.http, &format!("I believe the language is `{:?}`!",detection.language)).await?
     };
-    return Ok(());
+    Ok(())
 }

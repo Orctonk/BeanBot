@@ -84,10 +84,10 @@ async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) {
             let _ = msg.channel_id.say(&ctx.http, &format!("You are missing the following requirements {}", info)).await;
         },
         DispatchError::LackingRole => {
-            let _ = msg.channel_id.say(&ctx.http, &format!("You are missing the required role")).await;
+            let _ = msg.channel_id.say(&ctx.http, "You are missing the required role").await;
         },
         DispatchError::OnlyForOwners => {
-            let _ = msg.channel_id.say(&ctx.http, &format!("This command is only available to bot owners")).await;
+            let _ = msg.channel_id.say(&ctx.http, "This command is only available to bot owners").await;
         },
         DispatchError::TooManyArguments{max,given} => {
             let _ = msg.channel_id.say(&ctx.http, &format!("Too many arguments! {:?} max, {:?} given",max,given)).await;
