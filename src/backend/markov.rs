@@ -1,71 +1,44 @@
+
+extern crate glob;
+use glob::glob;
+
 use markov::*;
 use std::path::Path;
+use std::fs;
 use serenity::client::Context;
 use serenity::prelude::TypeMapKey;
-use std::io::ErrorKind;
+use std::collections::HashMap;
+use std::fs::DirEntry;
 use std::io::Error;
-use serenity::Result;
 
 
-pub struct BibleChain;
-
-pub type ChainResult = std::io::Result<Chain<String>>;
+pub struct ChainMap;
 
 //Nyckeltyp för SharedMap
-impl TypeMapKey for BibleChain{
-    type Value = ChainResult;
+impl TypeMapKey for ChainMap{
+    type Value = HashMap<String, Chain<String>>;
 }
 
-pub fn generate_sentence(chain: &ChainResult) -> std::io::Result<Vec<String>>{
-    let mut flag = true;
-    let mut out: std::io::Result<Vec<String>> = Ok(Vec::new());
-    //Create vector of words which the generated sentance must contain to be a valid beanverse.
-    let beans: Vec<&str> = vec!["beans", "bean", "wobean", "wobeans", "beansus", "heinz"];
-    while flag{
-        out = match chain {
-            Ok(c) => {
-                //Generate a sentence and check for bean words
-                let tokens = c.generate();
-                'beans: for string in tokens.iter(){
-                    for pat in beans.iter(){
-                        if string.to_lowercase().contains(pat){
-                            //If bean word is found, break loop and return the generated sentance
-                            flag = false;
-                            break 'beans;
-                        }
-                    }
-                }
-                Ok(tokens)
-            },
-            Err(_) => {
-                flag = false;
-                Err(std::io::Error::new(ErrorKind::InvalidData, "No"))
-            }
-        }
+pub async fn init_chain_file(chain_name: &str, order: usize) -> std::result::Result<(), Box<dyn std::error::Error>> {
+    let path_string = format!("markov/chains/{}.chain", chain_name);
+    let path = Path::new(path_string.as_str());
+    if !path.exists() {
+        eprintln!("Generating new chain ({}.chain)", chain_name);
+        let mut chain: Chain<String> = Chain::of_order(order);
+        chain.feed_file(Path::new(format!("markov/texts/{}.txt", chain_name).as_str()))?.save(path)?;
     }
-    return out;
+    Ok(())
 }
 
-pub async fn init_chain(client: &Context){
-    //Loads a chain to be used with the bot or creates a new chain if none was found
-    let path = Path::new("bible.chain");
-    let loaded_chain: ChainResult;
-    if !path.exists(){
-        eprintln!("{}", "Generating new bean chain");
-        let mut chain = Chain::of_order(3);
-        let fed_chain = chain.feed_file(Path::new("beanble.txt"));
-        if let Ok(bean) = fed_chain{
-            let _ = bean.save(path);
-            loaded_chain = Ok(chain);
-        } else{
-            loaded_chain = Err(Error::from(ErrorKind::Other));
-            eprintln!("{}", "Failed to generate new bean chain");
-        }
-    } else{
-        eprintln!("Loading existing chain");
-        loaded_chain = Chain::load(path);
+pub async fn init_chain_map(client: &Context) -> std::result::Result<(), Box<dyn std::error::Error>> {
+    let mut chain_map: HashMap<String, Chain<String>> = HashMap::new();
+    let paths: glob::Paths = glob("markov/chains/*.chain").expect("Failed to read glob pattern");
+    for entry in paths {
+        //INSERT LOADED CHAIN INTO MAP
+        let path_buf = entry?;
+        chain_map.insert(path_buf.as_path().file_name().unwrap().to_os_string().into_string().unwrap(), Chain::load(path_buf.as_path())?);
     }
-    //Store loaded chain in clients SharedMap
     let mut data = client.data.write().await;
-    data.insert::<BibleChain>(loaded_chain);
+    data.insert::<ChainMap>(chain_map);
+    Ok(())
 }
