@@ -6,8 +6,10 @@ use serenity::framework::standard::{
     macros::command,
     macros::group,
 };
+use std::fmt::Display;
 
 use crate::backend::markov::*;
+use markov::Chain;
 
 #[group]
 #[description = "Create a bean related bible verse"]
@@ -21,15 +23,7 @@ struct BeanVerse;
 #[usage = ""]
 #[aliases(bv)]
 pub async fn beanverse(ctx: &Context, msg: &Message) -> CommandResult {
-    //Aquire lock for the shared map
-    let data = ctx.data.read().await;
-    let result: Option<&ChainResult> = data.get::<BibleChain>();
-    if let None = result{
-        msg.channel_id.say(&ctx.http, "Could not generate beanverse. No chain").await?;
-        return Ok(())
-    }
-
-    match generate_sentence(result.unwrap()) {
+    match generate_sentence(ctx).await {
         //If sentence could be generated, combine tokens into string
         Ok(tokens) => {
             let mut message: String = "".parse().unwrap();
@@ -39,10 +33,44 @@ pub async fn beanverse(ctx: &Context, msg: &Message) -> CommandResult {
             }
             msg.channel_id.say(&ctx.http, message).await?;
         },
-        Err(_) => {
-            msg.channel_id.say(&ctx.http, "Could not generate beanverse. Backends fault").await?;
+        Err(s) => {
+            msg.channel_id.say(&ctx.http, s.as_str()).await?;
             ()
         },
     }
     Ok(())
+}
+
+async fn generate_sentence(client: &Context) -> std::result::Result<Vec<String>, String> {
+    //Create vector of words which the generated sentence must contain to be a valid bean verse.
+    let mut data = client.data.read().await;
+    let beanble_chain = match data.get::<ChainMap>() {
+        Some(map) => match map.get("beanble.chain") {
+            Some(c) => c,
+            _ => {return Err("No chain in chain map".to_string())}
+        },
+        _ => {return Err("No chain map in hash table".to_string())}
+    };
+
+
+    let beans: Vec<&str> = vec!["beans", "bean", "wobean", "wobeans", "beansus", "heinz"];
+    loop {
+        let tokens = beanble_chain.generate();
+        if sentence_contains_words(&tokens, &beans) {
+            return Ok(tokens);
+        }
+    }
+
+}
+
+fn sentence_contains_words(sentence: &Vec<String>, words: &Vec<&str>) -> bool {
+    for sentence_part in sentence.iter() {
+        for word in words.iter() {
+            if sentence_part.to_lowercase().contains(word) {
+                //If bean word is found, break loop and return the generated sentance
+                return true;
+            }
+        }
+    }
+    false
 }
