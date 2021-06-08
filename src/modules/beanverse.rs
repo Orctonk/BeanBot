@@ -2,14 +2,11 @@ use serenity::prelude::*;
 use serenity::model::prelude::*;
 use serenity::framework::standard::{
     CommandResult,
-    Args,
     macros::command,
     macros::group,
 };
-use std::fmt::Display;
 
 use crate::backend::markov::*;
-use markov::Chain;
 
 #[group]
 #[description = "Create a bean related bible verse"]
@@ -35,7 +32,7 @@ pub async fn beanverse(ctx: &Context, msg: &Message) -> CommandResult {
         },
         Err(s) => {
             msg.channel_id.say(&ctx.http, s.as_str()).await?;
-            ()
+
         },
     }
     Ok(())
@@ -43,7 +40,7 @@ pub async fn beanverse(ctx: &Context, msg: &Message) -> CommandResult {
 
 async fn generate_sentence(client: &Context) -> std::result::Result<Vec<String>, String> {
     //Create vector of words which the generated sentence must contain to be a valid bean verse.
-    let mut data = client.data.read().await;
+    let data = client.data.read().await;
     let beanble_chain = match data.get::<ChainMap>() {
         Some(map) => match map.get("beanble.chain") {
             Some(c) => c,
@@ -63,7 +60,7 @@ async fn generate_sentence(client: &Context) -> std::result::Result<Vec<String>,
 
 }
 
-fn sentence_contains_words(sentence: &Vec<String>, words: &Vec<&str>) -> bool {
+fn sentence_contains_words(sentence: &[String], words: &[&str]) -> bool {
     for sentence_part in sentence.iter() {
         for word in words.iter() {
             if sentence_part.to_lowercase().contains(word) {

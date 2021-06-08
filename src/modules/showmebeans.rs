@@ -26,7 +26,7 @@ pub async fn showmebeans(ctx: &Context, msg: &Message) -> CommandResult {
             //return e
             e
         })
-    }).await;
+    }).await?;
     //Return Ok Result
     Ok(())
 }

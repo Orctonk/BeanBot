@@ -4,13 +4,9 @@ use glob::glob;
 
 use markov::*;
 use std::path::Path;
-use std::fs;
 use serenity::client::Context;
 use serenity::prelude::TypeMapKey;
 use std::collections::HashMap;
-use std::fs::DirEntry;
-use std::io::Error;
-
 
 pub struct ChainMap;
 
