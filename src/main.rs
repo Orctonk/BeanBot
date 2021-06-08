@@ -5,7 +5,7 @@ use std::{
 };
 
 struct SettingsKey;
-use ini::Ini;   
+use ini::Ini;
 impl TypeMapKey for SettingsKey {
     type Value = Ini;
 }
@@ -19,6 +19,7 @@ use backend::specialbeans::*;
 mod modules;
 use modules::currency::*;
 use modules::showmebeans::*;
+use modules::beanverse::*;
 use modules::translation::*;
 use modules::specialbeans::*;
 
@@ -38,15 +39,19 @@ use serenity::{
     },
     http::Http,
     model::{
-        event::ResumedEvent, 
+        event::ResumedEvent,
         id::UserId,
-        channel::Message, 
-        gateway::Ready, 
+        channel::Message,
+        gateway::Ready,
         gateway::Activity,
         application::TeamMember,
     },
     prelude::*,
 };
+
+use crate::backend::markov::init_chain_file;
+use crate::backend::markov::init_chain_map;
+
 
 struct CommandHandler;
 
@@ -62,6 +67,10 @@ impl EventHandler for CommandHandler{
         };
         create_spec_table();
         create_wallet_table();
+        println!("Creating and/or loading markov chains");
+        if let Err(text) = init_chain_file("beanble", 3).await {eprintln!("{}", text)};
+        if let Err(text) = init_chain_map(&ctx).await {eprintln!("{}", text)};
+        println!("Done!");
         initialize_translation(&ctx, &settings).await;
         ctx.set_activity(Activity::listening("Quilla - Beans Beans Beans")).await;
         println!("Hello! I am ready to dispatch beans!");
@@ -124,7 +133,7 @@ async fn main(){
         Err(why) => panic!("Failed to load settings.ini! Error: {:?}", why),
         Ok(loaded) => loaded
     };
-    
+
     let token = match setfile.general_section().get("discord_api_token") {
         None => panic!("Discord API token is not set in settings.ini"),
         Some(token) => token
@@ -160,7 +169,9 @@ async fn main(){
         .group(&CURRENCY_GROUP)
         .group(&SHOWMEBEANS_GROUP)
         .group(&TRANSLATION_GROUP)
-        .group(&SPECIALBEANS_GROUP);
+        .group(&SPECIALBEANS_GROUP)
+        .group(&SHOWMEBEANS_GROUP)
+        .group(&BEANVERSE_GROUP);
 
     let mut client = Client::builder(&token)
         .framework(framework)
