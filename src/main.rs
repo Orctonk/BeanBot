@@ -22,6 +22,7 @@ use modules::showmebeans::*;
 use modules::beanverse::*;
 use modules::translation::*;
 use modules::specialbeans::*;
+use modules::admin::*;
 
 use serenity::{
     async_trait,
@@ -170,8 +171,8 @@ async fn main(){
         .group(&SHOWMEBEANS_GROUP)
         .group(&TRANSLATION_GROUP)
         .group(&SPECIALBEANS_GROUP)
-        .group(&SHOWMEBEANS_GROUP)
-        .group(&BEANVERSE_GROUP);
+        .group(&BEANVERSE_GROUP)
+        .group(&BEANADMIN_GROUP);
 
     let mut client = Client::builder(&token)
         .framework(framework)

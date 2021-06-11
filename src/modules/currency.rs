@@ -22,27 +22,9 @@ const YEARLY_BEAN_AMOUNT: u32 = 50;
 #[prefix = "beans"]
 #[description = "A group with commands related to the bean currency"]
 #[summary = "Bean currency commands"]
-#[commands(gimme,showme,give,eat,daily,weekly,monthly,yearly,beanmaster,beanboard)]
+#[commands(showme,give,eat,daily,weekly,monthly,yearly,beanmaster,beanboard)]
 #[default_command(showme)]
 struct Currency;
-
-#[command]
-#[owners_only]
-#[description = "Gives a specified amount of beans"]
-#[usage = "[amount]"]
-#[example = "100"]
-#[min_args(0)]
-#[max_args(1)]
-pub async fn gimme(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let userid = msg.author.id.0;
-    let amount = args.single::<u32>().unwrap_or(5);
-    let _ = match add_beans(userid, amount) {
-        Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?,
-        Ok(()) => msg.channel_id.say(&ctx.http, &format!("Here, have `{:?}` beans!",amount)).await?
-    };
-    
-    Ok(())
-}
 
 #[command]
 #[description = "Shows your current bean balance"]
