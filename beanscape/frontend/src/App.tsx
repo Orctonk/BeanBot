@@ -1,6 +1,7 @@
 import React from 'react';
 import { HomeScreen } from './screens/HomeScreen';
 import { BeanScreen } from './screens/BeanScreen';
+import { NotFound } from './screens/NotFound';
 import { PageHeader } from './containers/PageHeader';
 import { MessageLog } from './containers/MessageLog';
 import { BrowserRouter, Route, Switch } from 'react-router-dom';
@@ -18,6 +19,9 @@ function App() {
           </Route>
           <Route path='/beans'>
             <BeanScreen />
+          </Route>
+          <Route>
+            <NotFound />
           </Route>
         </Switch>
       </div>
