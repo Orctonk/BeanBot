@@ -27,7 +27,7 @@ const beanGetHandler = (req: Request, res: Response) => {
     fs.readdir('public/beans',(err, files) => {
       if(err){
         console.log(err);
-        res.send(500);
+        res.sendStatus(500);
       } else {
         res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.json(files);

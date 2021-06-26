@@ -1,17 +1,19 @@
 import createError, { HttpError } from 'http-errors';
-import express, {Request, Response, ErrorRequestHandler, NextFunction} from 'express';
-import path from 'path';
+import express, {Request, Response, NextFunction} from 'express';
 import cookieParser from 'cookie-parser';
+import dotenv from 'dotenv';
 import cors from 'cors';
 
 import beanRouter from './routes/beans';
 
-var app = express();
+dotenv.config();
 
 const PORT = process.env.PORT || '5000';
 
+var app = express();
+
 app.use(cors({
-  origin: ['http://localhost:3000']
+  origin: (process.env.CORS || '').split(',')
 }));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
