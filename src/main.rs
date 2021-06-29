@@ -162,7 +162,7 @@ async fn main(){
     let framework = StandardFramework::new()
         .configure(|c: &mut Configuration| c
             .owners(owners)
-            .prefix("!")
+            .prefix("?")
             .case_insensitivity(true)
             .on_mention(Some(bot_id))
         )
