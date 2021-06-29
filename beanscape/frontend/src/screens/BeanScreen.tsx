@@ -7,6 +7,7 @@ import FileCopyOutlined from '@material-ui/icons/FileCopy';
 import { useAuth0 } from '@auth0/auth0-react';
 import useStyle from '../styles/GlobalStyle';
 import axios from 'axios';
+import { decode, JwtPayload } from 'jsonwebtoken';
 import { AddBeanModal, prettyBeanName, beanFileName } from '../components/AddBeanModal';
 import { postMessage, useAppDispatch } from '../util/PostMessage';
 
@@ -17,6 +18,17 @@ export const BeanScreen = () => {
   const [ beans, setBeans ] = useState<string[]>();
   const [ token, setToken ] = useState<string>();
   const [ addBeanModalOpen, setAddBeanOpen ] = useState<boolean>(false);
+
+  const isAdmin = () : Boolean => {
+    if(token == null || !isAuthenticated){
+      return false;
+    }
+    const decoded = decode(token);
+    if(decoded)
+      return (decoded as JwtPayload).permissions.includes('write:beans');
+    else 
+      return false
+  };
 
   useEffect(() => {
     axios
@@ -46,7 +58,11 @@ export const BeanScreen = () => {
         window.location.reload();
       })
       .catch((err) => {
-        postMessage(dispatch, 'Failed to delete bean!', 'error');
+        if (err.response.status === 403){
+          postMessage(dispatch, 'You don\'t have permissions to delete beans!', 'error');
+        } else {
+          postMessage(dispatch, 'Failed to delete bean!', 'error');
+        }
       });
   }
 
@@ -67,9 +83,10 @@ export const BeanScreen = () => {
       .catch((err) => {
         if(err.response.status === 409){
           postMessage(dispatch, 'A bean with that name already exists', 'error');
+        } else if (err.response.status === 403){
+          postMessage(dispatch, 'You don\'t have permissions to add beans!', 'error');
         } else {
           postMessage(dispatch, 'Failed to add bean!', 'error');
-          console.log(err.response);
         }
       });
     })
@@ -87,7 +104,7 @@ export const BeanScreen = () => {
               navigator.clipboard.writeText(`${process.env.REACT_APP_API}/beans/${bean}`)
               postMessage(dispatch, `${prettyBeanName(bean)} copied to clipboard`);
             }}><FileCopyOutlined/></ButtonBase>
-            {isAuthenticated && 
+            { isAdmin() && 
               <ButtonBase onClick={() => handleBeanDelete(bean)}>
                 <CardMedia component={DeleteIcon}></CardMedia>
               </ButtonBase>
@@ -109,7 +126,7 @@ export const BeanScreen = () => {
         onSave={handleAddBean}  
       />
       <Grid container className={classes.beanGrid}>
-        { isAuthenticated && 
+        { isAdmin() && 
           <Card className={classes.addBeanCard}>
             <ButtonBase onClick={() => setAddBeanOpen(true) }>
               <CardMedia component={AddIcon} style={{fontSize: '200px'}}></CardMedia>

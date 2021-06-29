@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppBar, Toolbar, Box, Button } from '@material-ui/core';
+import { AppBar, Toolbar, Box } from '@material-ui/core';
 import { Link} from 'react-router-dom';
 import { makeStyles } from '@material-ui/core/styles';
 import { LoginButton } from '../components/LoginButton';
@@ -30,7 +30,8 @@ const useStyles = makeStyles((theme) => ({
     padding: '10px',
     color: 'white',
     textTransform: 'capitalize',
-    fontSize: '20px'
+    fontSize: '24px',
+    textDecoration: 'none',
   },
 }));
 
@@ -47,7 +48,7 @@ export const PageHeader = () => {
         </Toolbar>
       </AppBar>
       <Box className={classes.navigation}>
-        <Link to='/beans' component={Button} className={classes.navItem}>
+        <Link to='/beans' className={classes.navItem}>
           Beans
         </Link>
       </Box>

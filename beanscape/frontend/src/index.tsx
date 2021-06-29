@@ -13,6 +13,7 @@ ReactDOM.render(
     clientId={process.env.REACT_APP_AUTH0_CLIENT_ID ?? ''}
     redirectUri={`${window.location.origin}?redirect=${window.location.pathname}`}
     audience={process.env.REACT_APP_AUTH0_AUDIENCE ?? ''}
+    scope="write:beans"
   >
     <React.StrictMode>
       <Provider store={store}>
