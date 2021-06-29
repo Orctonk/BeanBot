@@ -27,7 +27,7 @@ struct SpecialBeans;
 pub async fn buy(ctx: &Context, msg: &Message) -> CommandResult {
     let userid = msg.author.id.0; 
     match withdraw_beans(userid, JAR_COST)  {
-        Err (_) => msg.channel_id.say(&ctx.http, &format!("You don't have enought cum... I mean BEANS")).await?,
+        Err (_) => msg.channel_id.say(&ctx.http, &format!("You don't have enough BEANS")).await?,
         Ok(_) =>  {
             let id = get_random_id();
             let name =  add_special_bean(userid, id);
