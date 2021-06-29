@@ -49,9 +49,9 @@ use serenity::{
     prelude::*,
 };
 
+use crate::backend::markov::init_dirs;
 use crate::backend::markov::init_chain_file;
 use crate::backend::markov::init_chain_map;
-
 
 struct CommandHandler;
 
@@ -68,8 +68,9 @@ impl EventHandler for CommandHandler{
         create_spec_table();
         create_wallet_table();
         println!("Creating and/or loading markov chains");
-        if let Err(text) = init_chain_file("beanble", 3).await {eprintln!("{}", text)};
-        if let Err(text) = init_chain_map(&ctx).await {eprintln!("{}", text)};
+        if let Err(text) = init_dirs().await {eprintln!("Failed to create dirs: {}", text)}
+        if let Err(text) = init_chain_file("beanble", 3).await {eprintln!("Failed to create/load beanble: {}", text)}
+        if let Err(text) = init_chain_map(&ctx).await {eprintln!("Failed to load chain maps: {}", text)}
         println!("Done!");
         initialize_translation(&ctx, &settings).await;
         ctx.set_activity(Activity::listening("Quilla - Beans Beans Beans")).await;

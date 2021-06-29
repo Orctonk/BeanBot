@@ -24,6 +24,9 @@ settings.ini
 # Dont include db
 beans.db
 
+# Dont include chain cache
+markov/chains/
+
 # IDE files
 .vs/
 .idea/

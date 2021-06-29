@@ -3,6 +3,8 @@ extern crate glob;
 use glob::glob;
 
 use markov::*;
+use std::fs::create_dir_all;
+use std::io::Result;
 use std::path::Path;
 use serenity::client::Context;
 use serenity::prelude::TypeMapKey;
@@ -13,6 +15,12 @@ pub struct ChainMap;
 //Nyckeltyp för SharedMap
 impl TypeMapKey for ChainMap{
     type Value = HashMap<String, Chain<String>>;
+}
+
+pub async fn init_dirs() -> Result<()> {
+    create_dir_all("markov/chains")?;
+    create_dir_all("markov/texts")?;
+    Ok(())
 }
 
 pub async fn init_chain_file(chain_name: &str, order: usize) -> std::result::Result<(), Box<dyn std::error::Error>> {
