@@ -58,16 +58,16 @@ pub fn create_spec_table() {
 }
 
 // Function for creating a new special bean. 
-pub fn create_special_bean(id: u32, name: &str, about: &str, image_url: &str, weight: u32) -> Result<(),SpecialBeansError> {
+pub fn create_special_bean(name: &str, about: &str, image_url: &str, weight: u32) -> Result<(),SpecialBeansError> {
     let conn = match open_connection() {
         Ok(connection) => connection,
         Err(why) => db_err!("Failed to open bean DB with error {:?}",why)
     };
    
     let res = conn.execute(
-        "INSERT INTO SpecBeans 
-        VALUES (?1,?2,?3, ?4,?5)", 
-        params![id, name, about, image_url, weight]);
+        "INSERT INTO SpecBeans (name,about,image,weight)
+        VALUES (?1,?2,?3,?4)", 
+        params![name, about, image_url, weight]);
     if let Err(why) = res{
         println!("Failed to insert test data with error {:?}",why);
     }
@@ -182,11 +182,43 @@ pub fn get_info_from_name(name: &str) -> Result<(String,String),SpecialBeansErro
     }
 }
 
+// --------------------- ADMIN COMMANDS ---------------------
+
+pub fn get_bean_full(name: &str) -> Result<(String,String,String,u32),SpecialBeansError> {
+    let conn = match open_connection() {
+        Ok(connection) => connection,
+        Err(why) => db_err!("Failed to open bean DB with error {:?}",why)
+    };
+    match conn.query_row("
+    SELECT name,about,image,weight
+    FROM SpecBeans
+    WHERE UPPER(name) = UPPER(?1)", params![name],|row| Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?))) {
+        Err(why) => db_err!("Failed to get description about bean with error {:?}",why),
+        Ok(res) => Ok(res)
+    }
+}
+
+pub fn update_special_bean(oldname: &str, newname: &str, about: &str, url: &str, weight: u32) -> Result<(),SpecialBeansError> {
+    let conn = match open_connection() {
+        Ok(connection) => connection,
+        Err(why) => db_err!("Failed to open bean DB with error {:?}",why)
+    };
+    match conn.execute("
+        UPDATE SpecBeans
+        SET name = ?1,
+            about = ?2,
+            image = ?3,
+            weight = ?4
+        WHERE UPPER(name) = UPPER(?5)", params![newname,about,url,weight,oldname]) {
+        Err(why) => db_err!("Failed to get description about bean with error {:?}",why),
+        Ok(_) => Ok(())
+    }
+}
+
 
 pub fn bean_insert() {
 
     if create_special_bean(
-        1,
         "Basic Bean",
         "Hello! I am a basic bean. How do you do?",
         "https://cdn.discordapp.com/attachments/594624834714206216/842111748618321930/basic_bean.png",
@@ -196,7 +228,6 @@ pub fn bean_insert() {
     }
     
     if create_special_bean(
-        2,
         "Cool Bean",
         "I am a cooool bean.",
         "https://beanscape.dev/beans/better_bean.png",
@@ -206,7 +237,6 @@ pub fn bean_insert() {
     }
 
     if create_special_bean(
-        3,
         "Bumblebean",
         "Bzzzzzzzz!",
         "https://cdn.discordapp.com/attachments/594624834714206216/842467339029970974/bumblebean.png",
@@ -216,7 +246,6 @@ pub fn bean_insert() {
     }
 
     if create_special_bean(
-        4,
         "Furbean",
         "The power of CHRIST flows through me.",
         "https://cdn.discordapp.com/attachments/594624834714206216/842781409810317373/furbean.png",
@@ -226,7 +255,6 @@ pub fn bean_insert() {
     }
 
     if create_special_bean(
-        5,
         "Stinky",
         "Im a stinky, stinky, bean.",
         "https://cdn.discordapp.com/attachments/594624834714206216/842111756264669214/Stinky.png",
@@ -236,7 +264,6 @@ pub fn bean_insert() {
     }
 
     if create_special_bean(
-        6,
         "The Beantles",
         "Well she was just 17, if you know what I bean!",
         "https://cdn.discordapp.com/attachments/594624834714206216/842474994244124722/Beantles.png",
