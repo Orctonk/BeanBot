@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 
 import beanRouter from './routes/beans';
+import { mkdirSync } from 'fs';
 
 dotenv.config();
 
@@ -42,5 +43,6 @@ app.use((err: HttpError ,req: Request, res: Response, next: NextFunction) => {
 
 
 app.listen(PORT,() => {
+  mkdirSync('public/beans', { recursive: true });
   console.log(`Listening on port ${PORT}`);
 })
