@@ -2,6 +2,7 @@ import express from 'express';
 import {beanGetHandler, beanPostHandler, beanDeleteHandler} from '../handlers/beanHandler';
 import jwt from 'express-jwt';
 import jwks from 'jwks-rsa';
+import jwtAuthz from 'express-jwt-authz';
 
 var router = express.Router();
 
@@ -17,9 +18,11 @@ var jwtCheck = jwt({
   algorithms: ['RS256']
 });
 
+const checkAdminScope = jwtAuthz([ 'write:beans' ]);
+
 router.get('/', beanGetHandler);
 router.get('/:name', beanGetHandler);
-router.post('/', jwtCheck, beanPostHandler);
-router.delete('/:name', jwtCheck, beanDeleteHandler);
+router.post('/', jwtCheck, checkAdminScope, beanPostHandler);
+router.delete('/:name', jwtCheck, checkAdminScope, beanDeleteHandler);
 
 export default router;
