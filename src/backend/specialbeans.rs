@@ -52,7 +52,6 @@ pub fn create_spec_table() {
     if let Err(why) = res2{
         println!("Failed to create 'have beans' table with error {:?}",why);
     } 
-    bean_insert();
     
     println!("Specialbeans module is using SQL version {:?}", rusqlite::version());
 }
@@ -212,63 +211,5 @@ pub fn update_special_bean(oldname: &str, newname: &str, about: &str, url: &str,
         WHERE UPPER(name) = UPPER(?5)", params![newname,about,url,weight,oldname]) {
         Err(why) => db_err!("Failed to get description about bean with error {:?}",why),
         Ok(_) => Ok(())
-    }
-}
-
-
-pub fn bean_insert() {
-
-    if create_special_bean(
-        "Basic Bean",
-        "Hello! I am a basic bean. How do you do?",
-        "https://cdn.discordapp.com/attachments/594624834714206216/842111748618321930/basic_bean.png",
-        10
-    ).is_err() {
-        println!("Failed to create Basic Bean!");
-    }
-    
-    if create_special_bean(
-        "Cool Bean",
-        "I am a cooool bean.",
-        "https://beanscape.dev/beans/better_bean.png",
-        5
-    ).is_err() {
-        println!("Failed to create Cool Bean!");
-    }
-
-    if create_special_bean(
-        "Bumblebean",
-        "Bzzzzzzzz!",
-        "https://cdn.discordapp.com/attachments/594624834714206216/842467339029970974/bumblebean.png",
-        3
-    ).is_err() {
-        println!("Failed to create Bumblebean!");
-    }
-
-    if create_special_bean(
-        "Furbean",
-        "The power of CHRIST flows through me.",
-        "https://cdn.discordapp.com/attachments/594624834714206216/842781409810317373/furbean.png",
-        1
-    ).is_err() {
-        println!("Failed to create Furbean!");
-    }
-
-    if create_special_bean(
-        "Stinky",
-        "Im a stinky, stinky, bean.",
-        "https://cdn.discordapp.com/attachments/594624834714206216/842111756264669214/Stinky.png",
-        3
-    ).is_err() {
-        println!("Failed to create Stinky!");
-    }
-
-    if create_special_bean(
-        "The Beantles",
-        "Well she was just 17, if you know what I bean!",
-        "https://cdn.discordapp.com/attachments/594624834714206216/842474994244124722/Beantles.png",
-        1
-    ).is_err() {
-        println!("Failed to create The Beantles!");
     }
 }
