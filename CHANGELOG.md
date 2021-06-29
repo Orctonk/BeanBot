@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.3.1 *Sprout*
+* Moved admin commands into separate admin module
+
 ## Version 0.3.0 *Sprout*
 * Added special beans which can be acquired from bean jars which can be bought for beans
     * The user can use the **mybeans** command to see their special beans and the **about** command to see information about one of the beans.
