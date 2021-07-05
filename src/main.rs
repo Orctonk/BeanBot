@@ -23,6 +23,7 @@ use modules::beanverse::*;
 use modules::translation::*;
 use modules::specialbeans::*;
 use modules::admin::*;
+use modules::beanius::*;
 
 use serenity::{
     async_trait,
@@ -53,6 +54,7 @@ use serenity::{
 use crate::backend::markov::init_dirs;
 use crate::backend::markov::init_chain_file;
 use crate::backend::markov::init_chain_map;
+use serenity::model::prelude::Interaction;
 
 struct CommandHandler;
 
@@ -68,10 +70,10 @@ impl EventHandler for CommandHandler{
         };
         create_spec_table();
         create_wallet_table();
-        println!("Creating and/or loading markov chains");
+        /*println!("Creating and/or loading markov chains");
         if let Err(text) = init_dirs().await {eprintln!("Failed to create dirs: {}", text)}
         if let Err(text) = init_chain_file("beanble", 3).await {eprintln!("Failed to create/load beanble: {}", text)}
-        if let Err(text) = init_chain_map(&ctx).await {eprintln!("Failed to load chain maps: {}", text)}
+        if let Err(text) = init_chain_map(&ctx).await {eprintln!("Failed to load chain maps: {}", text)}*/
         println!("Done!");
         initialize_translation(&ctx, &settings).await;
         ctx.set_activity(Activity::listening("Quilla - Beans Beans Beans")).await;
@@ -80,6 +82,17 @@ impl EventHandler for CommandHandler{
 
     async fn resume(&self, _: Context, _: ResumedEvent) {
         println!("Resumed");
+    }
+
+    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
+        interaction..message.unwrap().regular().unwrap().edit(&ctx.http, |m| {
+            m.content("Sus")
+        }).await;
+        interaction.create_interaction_response(&ctx.http, |f| {
+           f.interaction_response_data(|g| {
+               g.content("Yes")
+           })
+        }).await;
     }
 }
 
@@ -173,11 +186,13 @@ async fn main(){
         .group(&TRANSLATION_GROUP)
         .group(&SPECIALBEANS_GROUP)
         .group(&BEANVERSE_GROUP)
+        .group(&BEANIUS_GROUP)
         .group(&BEANADMIN_GROUP);
 
     let mut client = Client::builder(&token)
         .framework(framework)
         .event_handler(CommandHandler)
+        .application_id(354361968091594752)
         .await.expect("Error creating client");
 
     client.data.write().await.insert::<SettingsKey>(setfile);

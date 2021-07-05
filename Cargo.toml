@@ -5,7 +5,7 @@ authors = ["Rasmus Lyxell", "Filip Henningsson", "Mimmi Edholm"]
 edition = "2018"
 
 [dependencies]
-serenity = "0.10.7"
+serenity = {version = "0.10.8", features=["unstable_discord_api"]}
 markov = "1.1.0"
 tokio = { version = "1", features = ["full"] }
 rusqlite = { version = "0.25.3", features=["bundled", "chrono"] }
