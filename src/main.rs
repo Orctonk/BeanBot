@@ -1,3 +1,5 @@
+use std::borrow::BorrowMut;
+use std::fmt::Display;
 use std::{
     collections::HashSet,
     panic,
@@ -25,6 +27,7 @@ use modules::specialbeans::*;
 use modules::admin::*;
 use modules::beanius::*;
 
+use serenity::http::CacheHttp;
 use serenity::{
     async_trait,
     framework::{
@@ -56,6 +59,10 @@ use crate::backend::markov::init_chain_file;
 use crate::backend::markov::init_chain_map;
 use serenity::model::prelude::Interaction;
 
+pub trait Interactive {
+    fn receive_interaction(interactionId: u8) -> std::result::Result<(), Box<dyn std::error::Error>>;
+}
+
 struct CommandHandler;
 
 #[async_trait]
@@ -85,14 +92,19 @@ impl EventHandler for CommandHandler{
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        interaction..message.unwrap().regular().unwrap().edit(&ctx.http, |m| {
-            m.content("Sus")
-        }).await;
-        interaction.create_interaction_response(&ctx.http, |f| {
-           f.interaction_response_data(|g| {
-               g.content("Yes")
-           })
-        }).await;
+        interaction.create_interaction_response(&ctx.http, |f| f).await.expect_err("IDK waht happened");
+        match interaction.data.as_ref().unwrap() {
+            serenity::model::interactions::InteractionData::ApplicationCommand(_) => println!("ApplicationCommand"),
+            serenity::model::interactions::InteractionData::MessageComponent(mc) => {
+               interaction.message.unwrap().regular().unwrap().edit(&ctx.http,|f| f.content(match mc.custom_id.as_str() {
+                    "History" => {"History"},
+                    "Sports" => {"Sports"},
+                    "Science" => {"Science"},
+                    "Popular Culture" => {"Popular Culture"},
+                    _ => {"Bruh"}
+                })).await.expect("Failed to edit message");
+            },
+        }
     }
 }
 
