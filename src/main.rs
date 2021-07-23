@@ -60,7 +60,7 @@ use crate::backend::markov::init_chain_map;
 use serenity::model::prelude::Interaction;
 
 pub trait Interactive {
-    fn receive_interaction(interactionId: u8) -> std::result::Result<(), Box<dyn std::error::Error>>;
+    fn receive_interaction(interaction_id: u8) -> std::result::Result<(), Box<dyn std::error::Error>>;
 }
 
 struct CommandHandler;
@@ -83,6 +83,7 @@ impl EventHandler for CommandHandler{
         if let Err(text) = init_chain_map(&ctx).await {eprintln!("Failed to load chain maps: {}", text)}*/
         println!("Done!");
         initialize_translation(&ctx, &settings).await;
+        init_beanius(&ctx).await;
         ctx.set_activity(Activity::listening("Quilla - Beans Beans Beans")).await;
         println!("Hello! I am ready to dispatch beans!");
     }
@@ -93,16 +94,36 @@ impl EventHandler for CommandHandler{
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         interaction.create_interaction_response(&ctx.http, |f| f).await.expect_err("IDK waht happened");
-        match interaction.data.as_ref().unwrap() {
+        let map_lock = {
+            let data = ctx.data.read().await;
+            data.get::<ActiveGames>().expect("Beanius error: Unitiated hash map").clone()
+        };
+
+        match interaction.data.as_ref().expect("No data") {
             serenity::model::interactions::InteractionData::ApplicationCommand(_) => println!("ApplicationCommand"),
             serenity::model::interactions::InteractionData::MessageComponent(mc) => {
-               interaction.message.unwrap().regular().unwrap().edit(&ctx.http,|f| f.content(match mc.custom_id.as_str() {
-                    "History" => {"History"},
-                    "Sports" => {"Sports"},
-                    "Science" => {"Science"},
-                    "Popular Culture" => {"Popular Culture"},
-                    _ => {"Bruh"}
-                })).await.expect("Failed to edit message");
+                {
+                    let mut active_games = map_lock.write().await;
+                    let game = active_games.get_mut(&interaction.member.expect("No Member").user.id).expect("No game");
+                    
+                    match game.stage {
+                        GameStage::PickCategory => {
+                            game.stage = GameStage::PickQuestion;
+                            let mut msg = interaction.message.unwrap().regular().unwrap();
+                            msg.edit(&ctx.http,|f| f.content(match mc.custom_id.as_str() {
+                                "History" => {"How old is the Queen?"},
+                                "Sports" => {"What is football?"},
+                                "Science" => {"How bright is the sun?"},
+                                "Popular Culture" => {"Who voice acted Barry the Bee in \"Bee movie\"?"},
+                                _ => {"Bruh"}
+                            })).await.expect("Failed to edit message");
+                            //Change buttons
+                        },
+                        GameStage::PickQuestion => todo!(),
+                        GameStage::PlayAgain => todo!(),
+                        
+                    }
+                }
             },
         }
     }
