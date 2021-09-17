@@ -10,6 +10,7 @@ impl TypeMapKey for SettingsKey {
     type Value = Ini;
 }
 
+use songbird::SerenityInit;
 
 mod backend;
 use backend::currency::*;
@@ -23,6 +24,7 @@ use modules::beanverse::*;
 use modules::translation::*;
 use modules::specialbeans::*;
 use modules::admin::*;
+use modules::beanbird::*;
 
 use serenity::{
     async_trait,
@@ -162,7 +164,7 @@ async fn main(){
     let framework = StandardFramework::new()
         .configure(|c: &mut Configuration| c
             .owners(owners)
-            .prefix("?")
+            .prefix(";")
             .case_insensitivity(true)
             .on_mention(Some(bot_id))
         )
@@ -173,11 +175,13 @@ async fn main(){
         .group(&TRANSLATION_GROUP)
         .group(&SPECIALBEANS_GROUP)
         .group(&BEANVERSE_GROUP)
+        .group(&BEANBIRD_GROUP)
         .group(&BEANADMIN_GROUP);
 
     let mut client = Client::builder(&token)
         .framework(framework)
         .event_handler(CommandHandler)
+        .register_songbird()
         .await.expect("Error creating client");
 
     client.data.write().await.insert::<SettingsKey>(setfile);

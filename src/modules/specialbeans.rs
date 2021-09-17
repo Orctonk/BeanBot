@@ -25,7 +25,7 @@ struct SpecialBeans;
 #[description = "Buys a jar of beans"]
 #[min_args(0)]
 pub async fn buy(ctx: &Context, msg: &Message) -> CommandResult {
-    let userid = msg.author.id.0; 
+    let userid = msg.author.id.0;
     match withdraw_beans(userid, JAR_COST)  {
         Err (_) => msg.channel_id.say(&ctx.http, &format!("You don't have enough BEANS")).await?,
         Ok(_) =>  {
