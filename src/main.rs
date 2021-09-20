@@ -18,6 +18,7 @@ use backend::translation::*;
 use backend::specialbeans::*;
 
 mod modules;
+
 use modules::currency::*;
 use modules::showmebeans::*;
 use modules::beanverse::*;
