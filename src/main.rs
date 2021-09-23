@@ -77,7 +77,8 @@ impl EventHandler for CommandHandler{
         if let Err(text) = init_chain_map(&ctx).await {eprintln!("Failed to load chain maps: {}", text)}
         println!("Done!");
         initialize_translation(&ctx, &settings).await;
-        ctx.set_activity(Activity::listening("Quilla - Beans Beans Beans")).await;
+        ctx.set_activity(Activity::listening("Prefix: '?' We love beans!"));
+        //ctx.set_activity(Activity::listening("Quilla - Beans Beans Beans")).await;
         println!("Hello! I am ready to dispatch beans!");
     }
 
@@ -165,7 +166,7 @@ async fn main(){
     let framework = StandardFramework::new()
         .configure(|c: &mut Configuration| c
             .owners(owners)
-            .prefix(";")
+            .prefix("?")
             .case_insensitivity(true)
             .on_mention(Some(bot_id))
         )
