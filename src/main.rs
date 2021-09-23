@@ -77,7 +77,7 @@ impl EventHandler for CommandHandler{
         if let Err(text) = init_chain_map(&ctx).await {eprintln!("Failed to load chain maps: {}", text)}
         println!("Done!");
         initialize_translation(&ctx, &settings).await;
-        ctx.set_activity(Activity::listening("Prefix: '?' We love beans!"));
+        ctx.set_activity(Activity::listening("Prefix: '?' We love beans!")).await;
         //ctx.set_activity(Activity::listening("Quilla - Beans Beans Beans")).await;
         println!("Hello! I am ready to dispatch beans!");
     }
