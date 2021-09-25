@@ -1,0 +1,4 @@
+# Website files
+node_modules/
+public/
+build/

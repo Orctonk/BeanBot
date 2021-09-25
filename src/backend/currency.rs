@@ -1,5 +1,4 @@
 use rusqlite::{params, Connection};
-use rusqlite::NO_PARAMS;
 
 use chrono::prelude::*;
 use chrono::Duration;
@@ -14,13 +13,13 @@ macro_rules! db_err {
     ($fmt:tt, $reason:tt) => {
         {
             println!($fmt,$reason);
-            return Err(CurrencyError::InternalDatabaseError)?;
+            return Err(CurrencyError::InternalDatabaseError);
         }
     };
 }
 
 fn open_connection() -> rusqlite::Result<Connection> {
-    return Connection::open("beans.db");
+    Connection::open("beans.db")
 }
 
 pub fn create_wallet_table() {
@@ -35,7 +34,7 @@ pub fn create_wallet_table() {
         "CREATE TABLE IF NOT EXISTS Wallet (
             id INTEGER PRIMARY KEY,
             balance INTEGER
-        )",NO_PARAMS);
+        )",[]);
     if let Err(why) = res{
         println!("Failed to create wallet table with error {:?}",why);
     } 
@@ -47,7 +46,7 @@ pub fn create_wallet_table() {
             weekly DATETIME,
             monthly DATETIME,
             yearly DATETIME
-        )",NO_PARAMS);
+        )",[]);
     if let Err(why) = res2{
         println!("Failed to create wallet table with error {:?}",why);
     } 
@@ -79,9 +78,9 @@ pub fn withdraw_beans(user: u64, beans: u32) -> Result<(),CurrencyError> {
     );
     match res {
         Err(why) => db_err!("Failed to add beans to user with exception {:?}", why),
-        Ok(0) => return Err(CurrencyError::InsufficientBalance),
-        _ => return Ok(())
-    };
+        Ok(0) => Err(CurrencyError::InsufficientBalance),
+        _ => Ok(())
+    }
 }
 
 pub fn get_bean_balance(user: u64) -> Result<u32,CurrencyError> {
@@ -173,7 +172,7 @@ pub fn claim_daily(user: u64, amount: u32) -> Result<(),CurrencyError> {
 pub fn claim_weekly(user: u64, amount: u32) -> Result<(),CurrencyError> {
     let mut conn = match open_connection() {
         Ok(connection) => connection,
-        Err(why) => db_err!("Failed to open wallet DB with error {:?}",why)
+        Err(why) => db_err!("Fi64ailed to open wallet DB with error {:?}",why)
     };
 
     let res: rusqlite::Result<DateTime<Utc>> = conn.query_row("SELECT weekly FROM Claims WHERE id=?1",params![user as i64], |r| r.get(0));
@@ -295,3 +294,46 @@ pub fn claim_yearly(user: u64, amount: u32) -> Result<(),CurrencyError> {
     }
     Ok(())
 }
+
+pub fn get_highest_balance() ->  Result<u64,CurrencyError> {
+    let conn = match open_connection() {
+        Ok(connection) => connection,
+        Err(why) => db_err!("Failed to open wallet DB with error {:?}",why)
+    };
+    let res : rusqlite::Result<i64> = conn.query_row("SELECT id FROM Wallet ORDER BY balance DESC LIMIT 1",params![], |row| row.get(0));
+    match res {
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(0),
+        Err(why) => db_err!("Failed to get balance with error {:?}",why),
+        Ok(id) => Ok(id as u64)
+    } 
+}
+
+pub fn get_scores() ->  Result<Vec<(u64, u32)>,CurrencyError> {
+    let conn = match open_connection() {
+        Ok(connection) => connection,
+        Err(why) => db_err!("Failed to open wallet DB with error {:?}",why)
+    };
+    let mut res = match conn.prepare("SELECT id,balance FROM Wallet ORDER BY balance DESC LIMIT 10"){
+        Err(why) => db_err!("Failed to get balance with error {:?}",why),
+        Ok(res) => res
+    };
+    let rows = res.query_map([],|row|Ok((row.get(0)?,row.get(1)?)));
+    match rows {
+        Err(why) => db_err!("Failed to get balance with error {:?}",why),
+        Ok(scores_mapped) => {          
+            let mut scores = Vec::new();
+            for score_result in scores_mapped {
+                match score_result{
+                    Err(_) => {},
+                    Ok(score_result_elem) => {
+                        let result_type : (i64, u32) = score_result_elem; 
+                        scores.push((result_type.0 as u64, result_type.1 as u32))
+                    }
+                };
+            };
+            Ok(scores)
+        }
+        
+    }
+}
+

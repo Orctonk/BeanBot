@@ -1,5 +1,7 @@
 use serenity::prelude::*;
 use serenity::model::prelude::*;
+use serenity::model::id::UserId; 
+use serenity::utils::Colour;
 use serenity::framework::standard::{
     CommandResult,
     Args,
@@ -20,30 +22,9 @@ const YEARLY_BEAN_AMOUNT: u32 = 50;
 #[prefix = "beans"]
 #[description = "A group with commands related to the bean currency"]
 #[summary = "Bean currency commands"]
-#[commands(gimme,showme,give,eat,daily,weekly,monthly,yearly)]
+#[commands(showme,give,eat,daily,weekly,monthly,yearly,beanmaster,beanboard)]
 #[default_command(showme)]
 struct Currency;
-
-#[command]
-#[owners_only]
-#[description = "Gives a specified amount of beans"]
-#[usage = "[amount]"]
-#[example = "100"]
-#[min_args(0)]
-#[max_args(1)]
-pub async fn gimme(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let userid = msg.author.id.0;
-    let amount = match args.single::<u32>() {
-        Err(_) => 5,
-        Ok(am) => am
-    };
-    let _ = match add_beans(userid, amount) {
-        Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?,
-        Ok(()) => msg.channel_id.say(&ctx.http, &format!("Here, have `{:?}` beans!",amount)).await?
-    };
-    
-    Ok(())
-}
 
 #[command]
 #[description = "Shows your current bean balance"]
@@ -94,7 +75,7 @@ pub async fn eat(ctx: &Context, msg: &Message) -> CommandResult {
         Ok(amount) => amount
     };
     let upper = std::cmp::min(max, 10);
-    if upper <= 0{
+    if upper == 0 {
         msg.channel_id.say(&ctx.http, "You don't have any beans to eat!").await?;
         return Ok(());
     }
@@ -123,11 +104,12 @@ pub async fn daily(ctx: &Context, msg: &Message) -> CommandResult {
         Ok(_) => msg.channel_id.say(&ctx.http, &format!("You've claimed your daily `{:?}` beans",DAILY_BEAN_AMOUNT)).await?,
         Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
     };
-    return Ok(());
+    Ok(())
 }
 
 #[command]
 #[description = "Get your weekly bean allowance"]
+
 #[max_args(0)]
 pub async fn weekly(ctx: &Context, msg: &Message) -> CommandResult {
     let userid = msg.author.id.0;
@@ -142,7 +124,7 @@ pub async fn weekly(ctx: &Context, msg: &Message) -> CommandResult {
         Ok(_) => msg.channel_id.say(&ctx.http, &format!("You've claimed your weekly `{:?}` beans",WEEKLY_BEAN_AMOUNT)).await?,
         Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
     };
-    return Ok(());
+    Ok(())
 }
 
 #[command]
@@ -161,7 +143,7 @@ pub async fn monthly(ctx: &Context, msg: &Message) -> CommandResult {
         Ok(_) => msg.channel_id.say(&ctx.http, &format!("You've claimed your monthly `{:?}` beans",MONTHLY_BEAN_AMOUNT)).await?,
         Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
     };
-    return Ok(());
+    Ok(())
 }
 
 #[command]
@@ -180,5 +162,60 @@ pub async fn yearly(ctx: &Context, msg: &Message) -> CommandResult {
         Ok(_) => msg.channel_id.say(&ctx.http, &format!("You've claimed your yearly `{:?}` beans",YEARLY_BEAN_AMOUNT)).await?,
         Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
     };
-    return Ok(());
+    Ok(())
+}
+
+#[command]
+#[description = "Call upon the Bean Master, the Master of the Beans, the boi with the most beans."]
+#[max_args(0)]
+pub async fn beanmaster(ctx: &Context, msg: &Message) -> CommandResult {
+    //let phraces = vec!["The Bean Master is {:?}"];
+    let bean_master = get_highest_balance(); 
+    match bean_master {
+        Ok(bean) =>{
+            let master_id = UserId (bean);
+            let master_user = master_id.to_user(ctx).await;
+            match master_user {
+                Ok(master) => msg.channel_id.say(&ctx.http, &format!("The Bean Master is {:?}", master.name)).await?,
+                Err(_) => msg.channel_id.say(&ctx.http, "There is no beanmaster, you are free").await?
+            }
+    },
+
+        Err(_) => msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?
+    };
+    Ok(())
+}
+
+#[command]
+#[description = "See the score board of beans!"]
+#[max_args(0)]
+pub async fn beanboard(ctx: &Context, msg: &Message) -> CommandResult {
+    //let phraces = vec!["The Bean Master is {:?}"];
+    let mut users = Vec::new();
+    let bean_scores = get_scores(); 
+    match bean_scores {
+        Ok(beans) =>{
+            for (bean, amount) in beans {
+                let user_id = UserId (bean);
+                let user = user_id.to_user(ctx).await;
+                match user {
+                    Ok(new) => users.push((new.name, amount, false)),
+                    Err(_) => {}
+                };
+            }
+            msg.channel_id.send_message(&ctx.http, |m| {
+                m.embed(|e| {
+                    e.title("***Bean Board!***");
+                    e.color(Colour(16750123));
+                    e.fields(users);
+                    e
+                })
+            }).await?;
+            Ok(())
+        },
+        Err(_) => {
+            msg.channel_id.say(&ctx.http, DB_ERROR_MESSAGE).await?;
+            Ok(())
+        }
+    }
 }

@@ -12,9 +12,21 @@ Cargo.lock
 
 # Ignore token file for use of seperate toekns and privacy
 token
+google-api-token
+BeanBot*.json
+
+# Ignore settings file
+settings.ini
+
+# Ignore env files
+.env
 
 # Dont include db
 beans.db
 
+# Dont include chain cache
+markov/chains/
+
 # IDE files
 .vs/
+.idea/
