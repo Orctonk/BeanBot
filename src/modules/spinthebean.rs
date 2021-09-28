@@ -67,14 +67,12 @@ pub async fn spinthebean(ctx: &Context, msg: &Message, mut args: Args) -> Comman
         let _ = msg.channel_id.send_message(&ctx.http, |m|{
             m.embed(|e| {
                 e.author(|f|
-                    f.name("Kanna Beans")
-                        .icon_url("https://cdn.discordapp.com/avatars/354361968091594752/3cd9f38df78c761bd5b059797cbd6fec.png?size=128"))
+                    f.name("Spin result"))
                     .title(format!("The bean landed on __{}__", match &result.nick {
                         None => {result.user.name.to_string()}
                         Some(nick) => {nick.to_string()}
                     }))
-                    .color(16750123)
-                    .thumbnail("https://media1.tenor.com/images/f5b2182314ec6603e4015cb03497bdf9/tenor.gif?itemid=10565478");
+                    .color(16750123);
                 for (i, mem) in members.iter().enumerate(){
                     e.field(&names[i], if mem.user.eq(&result.user) {":point_up:"} else {"_"}, true);
                 }
@@ -83,23 +81,17 @@ pub async fn spinthebean(ctx: &Context, msg: &Message, mut args: Args) -> Comman
     } else{
         let mut valid_args: Vec<String> = Vec::new();
         for _ in 0..args.len(){
-            let _ = match args.single_quoted::<String>(){
-                Ok(arg_string) => valid_args.push(arg_string),
-                Err(_) => (),
-            };
+            if let Ok(arg_string) = args.single_quoted::<String>() { valid_args.push(arg_string) };
         }
         let rand_index: usize = random::<usize>() % valid_args.len();
         for x in 0..valid_args.len(){
             if rand_index == x{
-                eprintln!("{}", "Sending embed");
                 let _ = msg.channel_id.send_message(&ctx.http, |m|{
                     m.embed(|e| {
-                            e.author(|f|
-                                f.name("Kanna Beans")
-                                    .icon_url("https://cdn.discordapp.com/avatars/354361968091594752/3cd9f38df78c761bd5b059797cbd6fec.png?size=128"))
+                        e.author(|f|
+                            f.name("Spin result"))
                             .title(format!("The bean landed on __{}__", valid_args[x]))
-                            .color(16750123)
-                            .thumbnail("https://media1.tenor.com/images/f5b2182314ec6603e4015cb03497bdf9/tenor.gif?itemid=10565478");
+                            .color(16750123);
                         for (i, arg) in valid_args.iter().enumerate(){
                             e.field(arg, if i == rand_index {":point_up:"} else {"_"}, true);
                         }
