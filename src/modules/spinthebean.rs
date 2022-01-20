@@ -17,7 +17,7 @@ struct SpinTheBean;
 #[delimiters(",", " ")]
 #[aliases(stb, spin)]
 pub async fn spinthebean(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    if args.len() == 0{
+    if args.is_empty(){
         let voice_states: HashMap<UserId, VoiceState>;
         let voice_state: &VoiceState =  match msg.guild(&ctx.cache).await{
             None => {
@@ -89,9 +89,11 @@ pub async fn spinthebean(ctx: &Context, msg: &Message, mut args: Args) -> Comman
                 let _ = msg.channel_id.send_message(&ctx.http, |m|{
                     m.embed(|e| {
                         e.author(|f|
-                            f.name("Spin result"))
-                            .title(format!("The bean landed on __{}__", valid_args[x]))
-                            .color(16750123);
+                                f.name("Spin result")
+                                .icon_url("https://cdn.discordapp.com/attachments/371347829169324032/933671673180340244/ezgif.com-gif-maker7.gif".to_string())
+                        )
+                        .title(format!("The bean landed on __{}__", valid_args[x]))
+                        .color(16750123);
                         for (i, arg) in valid_args.iter().enumerate(){
                             e.field(arg, if i == rand_index {":point_up:"} else {"_"}, true);
                         }
