@@ -180,7 +180,6 @@ async fn main(){
         .group(&BEANVERSE_GROUP)
         .group(&BEANBIRD_GROUP)
         .group(&BEANADMIN_GROUP)
-        .group(&SHOWMEBEANS_GROUP)
         .group(&SPINTHEBEAN_GROUP);
 
     let mut client = Client::builder(&token)
